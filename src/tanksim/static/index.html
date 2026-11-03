@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T-101 Elevated tank · tanksim</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="/hmi.css">
+</head>
+<body>
+<header class="bar">
+  <div class="plant">
+    <h1>T-101 Elevated tank</h1>
+    <span class="sub">Fill pump P-101, level transmitter LT-101</span>
+  </div>
+  <div class="clock" id="clock" aria-label="Plant time">--:--</div>
+  <button class="alarm-summary" id="alarm-summary" type="button" aria-live="polite">No alarms</button>
+</header>
+
+<div class="link-lost" id="link-lost" hidden>Connection to tanksim lost. Retrying…</div>
+
+<main class="grid">
+  <section class="panel process" aria-label="Process graphic">
+    <svg id="mimic" viewBox="0 0 660 430" role="img" aria-label="Pump P-101 fills tank T-101, which supplies the consumers">
+      <defs>
+        <clipPath id="tank-clip"><rect x="362" y="62" width="156" height="300" rx="2"/></clipPath>
+      </defs>
+
+      <!-- supply cistern -->
+      <rect class="vessel" x="24" y="330" width="120" height="70"/>
+      <rect class="water" x="25" y="352" width="118" height="47"/>
+      <text class="label" x="84" y="420" text-anchor="middle">Supply cistern</text>
+
+      <!-- suction and discharge piping -->
+      <path id="pipe-in" class="pipe" d="M144 366 H184 M228 366 H270 V40 H440 V62"/>
+      <text class="tag" x="258" y="190" text-anchor="end">FT-101</text>
+      <text class="value" id="v-inflow" x="258" y="212" text-anchor="end">0.0 L/min</text>
+
+      <!-- pump -->
+      <g id="pump" class="pump" tabindex="-1">
+        <circle cx="206" cy="366" r="22"/>
+        <path d="M196 352 L226 366 L196 380 Z"/>
+      </g>
+      <text class="tag" x="206" y="318" text-anchor="middle">P-101</text>
+      <text class="state" id="v-pump" x="206" y="408" text-anchor="middle">Stopped</text>
+      <text class="note" id="v-delay" x="206" y="426" text-anchor="middle"></text>
+
+      <!-- tank -->
+      <g clip-path="url(#tank-clip)">
+        <rect id="tank-water" class="water" x="362" y="362" width="156" height="0"/>
+      </g>
+      <rect class="vessel" x="360" y="60" width="160" height="304" rx="3"/>
+      <g id="scale"></g>
+      <g id="setpoint-marks"></g>
+
+      <text class="tag" x="440" y="30" text-anchor="middle">T-101</text>
+
+      <!-- level readout -->
+      <g class="readout">
+        <text class="tag" x="560" y="164">LT-101</text>
+        <text class="big" id="v-level" x="560" y="196">--.- %</text>
+        <text class="value" id="v-mm" x="560" y="218">---- mm</text>
+        <text class="value" id="v-volume" x="560" y="238">---- L</text>
+      </g>
+
+      <!-- outlet -->
+      <path id="pipe-out" class="pipe" d="M520 344 H640"/>
+      <text class="tag" x="560" y="300">FT-102</text>
+      <text class="value" id="v-outflow" x="560" y="322">0.0 L/min</text>
+      <text class="label" x="640" y="370" text-anchor="end">To consumers</text>
+      <text class="note alarm-text" id="v-overflow" x="440" y="392" text-anchor="middle"></text>
+    </svg>
+  </section>
+
+  <section class="panel faceplate" aria-labelledby="fp-title">
+    <h2 id="fp-title">Pump P-101</h2>
+    <p class="pump-state" id="fp-state">Stopped</p>
+
+    <div class="field">
+      <span class="field-name" id="mode-label">Mode</span>
+      <div class="segmented" role="group" aria-labelledby="mode-label">
+        <button type="button" id="btn-auto" aria-pressed="true">Auto</button>
+        <button type="button" id="btn-manual" aria-pressed="false">Manual</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-name" id="cmd-label">Command</span>
+      <div class="segmented" role="group" aria-labelledby="cmd-label">
+        <button type="button" id="btn-start">Start</button>
+        <button type="button" id="btn-stop">Stop</button>
+      </div>
+    </div>
+    <p class="hint" id="cmd-hint">In auto the PLC starts the pump at the start level and stops it at the stop level.</p>
+
+    <dl class="counters">
+      <div><dt>Starts</dt><dd id="v-starts">0</dd></div>
+      <div><dt>Run time</dt><dd id="v-runtime">0 h 00 min</dd></div>
+    </dl>
+
+    <div class="actions">
+      <button type="button" id="btn-ack">Acknowledge alarms</button>
+      <button type="button" id="btn-reset">Reset faults</button>
+    </div>
+
+    <form id="sp-form" class="setpoints">
+      <h3>Setpoints, % of tank height</h3>
+      <div class="sp-grid" id="sp-grid"></div>
+      <p class="error" id="sp-error" role="alert"></p>
+      <button type="submit">Apply setpoints</button>
+    </form>
+  </section>
+
+  <section class="panel trend" aria-labelledby="trend-title">
+    <h2 id="trend-title">Level, last 2 hours</h2>
+    <canvas id="trend" height="220" aria-label="Level trend"></canvas>
+    <p class="legend"><span class="key key-level"></span>Level <span class="key key-band"></span>Start and stop <span class="key key-pump"></span>Pump running</p>
+  </section>
+
+  <section class="panel alarms" aria-labelledby="alarms-title">
+    <h2 id="alarms-title">Alarms</h2>
+    <table>
+      <thead><tr><th scope="col">Since</th><th scope="col">Tag</th><th scope="col">Message</th><th scope="col">State</th></tr></thead>
+      <tbody id="alarm-rows"></tbody>
+    </table>
+    <p class="empty" id="alarm-empty">All quiet. New alarms appear here and stay until they clear and you acknowledge them.</p>
+    <h3>Event log</h3>
+    <ol class="events" id="events"></ol>
+  </section>
+</main>
+
+<section class="sim" aria-labelledby="sim-title">
+  <h2 id="sim-title">Simulator</h2>
+  <p class="sim-note">Outside the plant. A real operator cannot do these things; use them to test how the PLC reacts.</p>
+  <div class="sim-grid">
+    <div class="field">
+      <span class="field-name" id="speed-label">Time speed</span>
+      <div class="segmented" role="group" aria-labelledby="speed-label" id="speeds"></div>
+      <button type="button" id="btn-pause" aria-pressed="false">Pause</button>
+    </div>
+    <label class="field">
+      <span class="field-name">Water demand <output id="demand-out">100 %</output></span>
+      <input type="range" id="demand" min="0" max="300" step="10" value="100">
+    </label>
+    <div class="field">
+      <span class="field-name" id="fault-label">Faults</span>
+      <div class="toggles" role="group" aria-labelledby="fault-label">
+        <button type="button" data-fault="pump" aria-pressed="false">Break the pump</button>
+        <button type="button" data-fault="sensor" aria-pressed="false">Freeze the level sensor</button>
+        <button type="button" data-fault="leak" aria-pressed="false">Open a 40 L/min leak</button>
+      </div>
+    </div>
+    <p class="truth">True level <strong id="v-true">--.- %</strong></p>
+  </div>
+</section>
+
+<script src="/hmi.js"></script>
+</body>
+</html>

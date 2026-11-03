@@ -191,10 +191,10 @@ class Plc:
             alarm = a[tag]
             if active and not alarm.active:
                 alarm.active, alarm.acked, alarm.since = True, False, self.clock
-                self._log("ALM", f"{tag}  {ALARM_TEXT[tag]}")
+                self._log("ALM", f"{tag}: {ALARM_TEXT[tag]}")
             elif not active and alarm.active:
                 alarm.active = False
-                self._log("RTN", f"{tag}  back to normal")
+                self._log("RTN", f"{tag}: back to normal")
         return a["HH"].active
 
     def _log(self, kind: str, text: str) -> None:
