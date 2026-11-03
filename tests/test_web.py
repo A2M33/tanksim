@@ -89,7 +89,7 @@ def test_poll_line():
     line = format_poll(
         [True, False],
         [True, True, False, True, False, False, False, False, True],
-        [123, 369, 1200, 455, 4, 75, 390, 0],
+        [123, 369, 1800, 455, 4, 75, 390, 0],
         [50, 150, 200, 800, 900, 950, 100],
     )
     assert line.startswith("06:30  level  12.3 %   369 mm")

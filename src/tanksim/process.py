@@ -34,7 +34,7 @@ class Process:
         *,
         height_m: float = 3.0,
         diameter_m: float = 2.0,
-        pump_lpm: float = 120.0,
+        pump_lpm: float = 180.0,  # sized above the 110 L/min morning peak
         level_pct: float = 45.0,
         start_minute: float = 6 * 60 + 30,
         seed: int | None = None,
