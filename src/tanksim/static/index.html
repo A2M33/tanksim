@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>T-101 Elevated tank · tanksim</title>
 <link rel="icon" href="data:,">
-<link rel="stylesheet" href="/hmi.css">
+<link rel="stylesheet" href="hmi.css">
 </head>
 <body>
 <header class="bar">
@@ -17,6 +17,7 @@
   <button class="alarm-summary" id="alarm-summary" type="button" aria-live="polite">No alarms</button>
 </header>
 
+<p class="demo-note" id="demo-note" role="status" hidden></p>
 <div class="link-lost" id="link-lost" hidden>Connection to tanksim lost. Retrying…</div>
 
 <main class="grid">
@@ -154,6 +155,6 @@
   </div>
 </section>
 
-<script src="/hmi.js"></script>
+<script src="hmi.js"></script>
 </body>
 </html>

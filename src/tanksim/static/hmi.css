@@ -61,6 +61,15 @@ button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); 
 .alarm-summary.has-medium { background: var(--alarm-medium); border-color: #9c6c00; color: var(--ink); }
 .alarm-summary.unacked { animation: flash 1s steps(1) infinite; }
 
+.demo-note {
+  margin: 0;
+  padding: 8px 20px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.demo-note a { color: var(--focus); }
+
 .link-lost {
   padding: 8px 20px;
   background: var(--ink);

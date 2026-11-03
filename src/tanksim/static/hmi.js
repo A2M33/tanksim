@@ -27,6 +27,35 @@ const $ = (id) => document.getElementById(id);
 let state = null;
 let history = [];
 let spDirty = false;
+let demo = null; // set when the simulator runs in the browser (GitHub Pages)
+
+const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
+const DEMO_MODULES = ["__init__", "process", "plc", "sim", "commands"];
+const DEMO_GLUE = `
+import json, sys
+sys.path.insert(0, "/home/pyodide")
+from tanksim.sim import Simulator
+from tanksim.commands import CommandError, apply_command
+
+sim = Simulator()
+
+def step(real_s):
+    if not sim.paused:
+        sim.step(min(real_s, 1.0) * sim.speed)
+
+def snapshot():
+    return json.dumps(sim.snapshot())
+
+def history():
+    return json.dumps(sim.history_list())
+
+def command(body):
+    try:
+        apply_command(sim, json.loads(body))
+    except CommandError as err:
+        return str(err)
+    return ""
+`;
 
 // ---- helpers ---------------------------------------------------------
 
@@ -52,7 +81,13 @@ function levelY(pct) {
 }
 
 async function send(cmd, extra = {}) {
-  const res = await fetch("/api/command", {
+  if (demo) {
+    const error = demo.command(JSON.stringify({ cmd, ...extra }));
+    if (error) throw new Error(error);
+    if (state) render(JSON.parse(demo.snapshot()));
+    return;
+  }
+  const res = await fetch("api/command", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cmd, ...extra }),
@@ -335,15 +370,65 @@ async function start() {
   buildSetpointForm();
   buildSpeeds();
   wire();
+  // The Pages build marks itself, so it never probes for a server.
+  const res = document.documentElement.hasAttribute("data-demo")
+    ? null
+    : await fetch("api/history").catch(() => null);
+  if (res && res.ok) {
+    history = await res.json();
+    const stream = new EventSource("api/stream");
+    stream.onmessage = (e) => {
+      $("link-lost").hidden = true;
+      render(JSON.parse(e.data));
+    };
+    stream.onerror = () => { $("link-lost").hidden = false; };
+  } else {
+    await startDemo();
+  }
+}
+
+// No tanksim server behind this page: run the same Python code in the
+// browser with Pyodide. Everything except the Modbus server works.
+async function startDemo() {
+  const note = $("demo-note");
+  note.hidden = false;
+  note.textContent = "Loading the simulator into your browser…";
   try {
-    history = await (await fetch("/api/history")).json();
-  } catch { history = []; }
-  const stream = new EventSource("/api/stream");
-  stream.onmessage = (e) => {
-    $("link-lost").hidden = true;
-    render(JSON.parse(e.data));
-  };
-  stream.onerror = () => { $("link-lost").hidden = false; };
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = PYODIDE + "pyodide.js";
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Could not load Pyodide"));
+      document.head.append(script);
+    });
+    const py = await loadPyodide({ indexURL: PYODIDE });
+    py.FS.mkdirTree("/home/pyodide/tanksim");
+    for (const name of DEMO_MODULES) {
+      const source = await (await fetch(`py/tanksim/${name}.py`)).text();
+      py.FS.writeFile(`/home/pyodide/tanksim/${name}.py`, source);
+    }
+    const ns = py.globals.get("dict")();
+    py.runPython(DEMO_GLUE, { globals: ns });
+    demo = {
+      step: ns.get("step"),
+      snapshot: ns.get("snapshot"),
+      command: ns.get("command"),
+    };
+    history = JSON.parse(ns.get("history")());
+  } catch (err) {
+    note.textContent = `The demo could not start: ${err.message}. Install tanksim with pip to run it locally.`;
+    return;
+  }
+  note.innerHTML = 'Live demo: the PLC program runs in your browser. ' +
+    '<a href="https://github.com/A2M33/tanksim#run-it">Install tanksim</a> to get the Modbus TCP server too.';
+
+  let last = performance.now();
+  setInterval(() => {
+    const now = performance.now();
+    demo.step((now - last) / 1000);
+    last = now;
+  }, 100);
+  setInterval(() => render(JSON.parse(demo.snapshot())), 250);
 }
 
 start();
