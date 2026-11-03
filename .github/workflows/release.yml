@@ -1,0 +1,26 @@
+name: release
+
+# Builds tanksim.exe on a clean Windows runner and attaches it to the release,
+# so Windows users without Python can download one file.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[dev]" pyinstaller
+      - run: pytest -q
+      - run: pyinstaller --onefile --name tanksim --paths src --add-data "src/tanksim/static;tanksim/static" packaging/entry.py
+      - run: dist\tanksim.exe --version
+      - run: gh release upload ${{ github.event.release.tag_name }} dist/tanksim.exe --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
