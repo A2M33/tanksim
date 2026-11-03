@@ -85,17 +85,23 @@ class Plc:
                 self._log("OPR", "Pump " + ("start" if run else "stop") + " requested")
 
     def set_setpoint(self, name: str, value: float) -> None:
-        if name not in self.setpoints:
-            raise KeyError(name)
-        trial = dict(self.setpoints, **{name: float(value)})
+        self.set_setpoints({name: value})
+
+    def set_setpoints(self, changes: dict[str, float]) -> None:
+        """Apply several setpoints at once; all or nothing."""
+        for name in changes:
+            if name not in self.setpoints:
+                raise KeyError(name)
+        trial = dict(self.setpoints, **{k: float(v) for k, v in changes.items()})
         values = [trial[k] for k in SETPOINT_ORDER]
         if not 0 <= values[0] or not values[-1] <= 100:
             raise ValueError("setpoints must lie between 0 and 100 %")
         if any(a >= b for a, b in zip(values, values[1:])):
             raise ValueError("setpoints must rise: " + " < ".join(SETPOINT_ORDER))
-        if trial[name] != self.setpoints[name]:
-            self.setpoints = trial
-            self._log("OPR", f"Setpoint {name} set to {value:g} %")
+        changed = [k for k in SETPOINT_ORDER if trial[k] != self.setpoints[k]]
+        self.setpoints = trial
+        for name in changed:
+            self._log("OPR", f"Setpoint {name} set to {trial[name]:g} %")
 
     def acknowledge(self) -> None:
         pending = [a for a in self.alarms.values() if not a.acked]
