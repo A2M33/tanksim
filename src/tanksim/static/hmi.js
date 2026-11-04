@@ -69,6 +69,22 @@ function hhmmss(clock) {
   return hhmm(s / 60) + ":" + String(s % 60).padStart(2, "0");
 }
 
+// Rebuild a block only when its data changed. Replacing it on every snapshot
+// restarts the alarm flash before it shows, and loses any text selection.
+const drawn = new Map();
+
+function changed(block, data) {
+  const key = JSON.stringify(data);
+  if (drawn.get(block) === key) return false;
+  drawn.set(block, key);
+  return true;
+}
+
+function setText(id, text) {
+  const el = $(id);
+  if (el.textContent !== String(text)) el.textContent = text;
+}
+
 function svg(tag, attrs, text) {
   const el = document.createElementNS(SVG_NS, tag);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
@@ -163,6 +179,7 @@ function renderMimic(s) {
   $("v-overflow").textContent = s.overflow > 0 ? `Overflowing ${s.overflow.toFixed(0)} L/min` : "";
 
   const active = new Set(s.alarms.filter((a) => a.active).map((a) => a.tag));
+  if (!changed("marks", [s.setpoints, [...active]])) return;
   const marks = $("setpoint-marks");
   marks.replaceChildren();
   for (const [key, label, cls, tag] of SETPOINTS) {
@@ -208,38 +225,42 @@ function renderAlarms(s) {
   const n = s.alarms.length;
   const unacked = s.alarms.filter((a) => !a.acked).length;
   const high = s.alarms.some((a) => HIGH_PRIORITY.has(a.tag));
-  summary.textContent = n === 0 ? "No alarms" : `${n} alarm${n > 1 ? "s" : ""}` + (unacked ? `, ${unacked} not acknowledged` : "");
+  setText("alarm-summary", n === 0 ? "No alarms" : `${n} alarm${n > 1 ? "s" : ""}` + (unacked ? `, ${unacked} not acknowledged` : ""));
   summary.className = "alarm-summary" + (n ? (high ? " has-high" : " has-medium") : "") + (unacked ? " unacked" : "");
 
-  const rows = $("alarm-rows");
-  rows.replaceChildren();
-  const sorted = [...s.alarms].sort((a, b) => b.since - a.since);
-  for (const a of sorted) {
-    const tr = document.createElement("tr");
-    tr.className = [HIGH_PRIORITY.has(a.tag) ? "high" : "medium", a.acked ? "acked" : "unacked", a.active ? "active" : "cleared"].join(" ");
-    const stateText = a.active ? (a.acked ? "Active" : "Active, not acknowledged") : "Cleared, not acknowledged";
-    for (const [text, cls] of [[hhmmss(a.since)], [a.tag], [a.text], [stateText, "state-cell"]]) {
-      const td = document.createElement("td");
-      td.textContent = text;
-      if (cls) td.className = cls;
-      tr.append(td);
+  if (changed("alarms", s.alarms)) {
+    const rows = $("alarm-rows");
+    rows.replaceChildren();
+    const sorted = [...s.alarms].sort((a, b) => b.since - a.since);
+    for (const a of sorted) {
+      const tr = document.createElement("tr");
+      tr.className = [HIGH_PRIORITY.has(a.tag) ? "high" : "medium", a.acked ? "acked" : "unacked", a.active ? "active" : "cleared"].join(" ");
+      const stateText = a.active ? (a.acked ? "Active" : "Active, not acknowledged") : "Cleared, not acknowledged";
+      for (const [text, cls] of [[hhmmss(a.since)], [a.tag], [a.text], [stateText, "state-cell"]]) {
+        const td = document.createElement("td");
+        td.textContent = text;
+        if (cls) td.className = cls;
+        tr.append(td);
+      }
+      rows.append(tr);
     }
-    rows.append(tr);
+    $("alarm-empty").hidden = n > 0;
   }
-  $("alarm-empty").hidden = n > 0;
 
-  const list = $("events");
-  list.replaceChildren();
-  for (const [clock, kind, text] of [...s.events].reverse()) {
-    const li = document.createElement("li");
-    li.className = kind;
-    for (const [t, cls] of [[hhmmss(clock), "time"], [kind, "kind"], [text, "text"]]) {
-      const span = document.createElement("span");
-      span.className = cls;
-      span.textContent = t;
-      li.append(span);
+  if (changed("events", s.events)) {
+    const list = $("events");
+    list.replaceChildren();
+    for (const [clock, kind, text] of [...s.events].reverse()) {
+      const li = document.createElement("li");
+      li.className = kind;
+      for (const [t, cls] of [[hhmmss(clock), "time"], [kind, "kind"], [text, "text"]]) {
+        const span = document.createElement("span");
+        span.className = cls;
+        span.textContent = t;
+        li.append(span);
+      }
+      list.append(li);
     }
-    list.append(li);
   }
 }
 
