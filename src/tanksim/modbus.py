@@ -178,28 +178,38 @@ class ModbusClient:
         self._tid = (self._tid + 1) & 0xFFFF
         self._sock.sendall(struct.pack(">HHHB", self._tid, 0, len(pdu) + 1, self.unit) + pdu)
         tid, _, length, _ = struct.unpack(">HHHB", _recv_exact(self._sock, 7))
-        reply = _recv_exact(self._sock, length - 1)
+        reply = _recv_exact(self._sock, max(0, length - 1))
         if tid != self._tid:
             raise ConnectionError(f"transaction id {tid}, expected {self._tid}")
+        if len(reply) < 2 or reply[0] & 0x7F != pdu[0]:
+            raise ConnectionError("malformed Modbus reply")
         if reply[0] & 0x80:
             raise ModbusError(reply[1])
         return reply
 
+    def _read(self, fc: int, address: int, count: int, size: int) -> bytes:
+        reply = self.request(struct.pack(">BHH", fc, address, count))
+        if reply[1] != size or len(reply) != 2 + size:
+            raise ConnectionError("malformed Modbus reply")
+        return reply[2:]
+
+    def _read_bits(self, fc: int, address: int, count: int) -> list[bool]:
+        return unpack_bits(self._read(fc, address, count, (count + 7) // 8), count)
+
+    def _read_registers(self, fc: int, address: int, count: int) -> list[int]:
+        return list(struct.unpack(f">{count}H", self._read(fc, address, count, 2 * count)))
+
     def read_coils(self, address: int, count: int) -> list[bool]:
-        reply = self.request(struct.pack(">BHH", READ_COILS, address, count))
-        return unpack_bits(reply[2:], count)
+        return self._read_bits(READ_COILS, address, count)
 
     def read_discrete_inputs(self, address: int, count: int) -> list[bool]:
-        reply = self.request(struct.pack(">BHH", READ_DISCRETE_INPUTS, address, count))
-        return unpack_bits(reply[2:], count)
+        return self._read_bits(READ_DISCRETE_INPUTS, address, count)
 
     def read_holding_registers(self, address: int, count: int) -> list[int]:
-        reply = self.request(struct.pack(">BHH", READ_HOLDING_REGISTERS, address, count))
-        return list(struct.unpack(f">{count}H", reply[2:]))
+        return self._read_registers(READ_HOLDING_REGISTERS, address, count)
 
     def read_input_registers(self, address: int, count: int) -> list[int]:
-        reply = self.request(struct.pack(">BHH", READ_INPUT_REGISTERS, address, count))
-        return list(struct.unpack(f">{count}H", reply[2:]))
+        return self._read_registers(READ_INPUT_REGISTERS, address, count)
 
     def write_coil(self, address: int, value: bool) -> None:
         self.request(struct.pack(">BHH", WRITE_SINGLE_COIL, address, 0xFF00 if value else 0))

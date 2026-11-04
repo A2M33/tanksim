@@ -1,5 +1,6 @@
 import socket
 import struct
+import threading
 
 import pytest
 
@@ -129,6 +130,26 @@ def test_half_a_frame_times_out_but_an_idle_client_stays(sim, monkeypatch):
     finally:
         server.shutdown()
         server.server_close()
+
+
+@pytest.mark.parametrize(
+    "pdu",
+    [b"", b"\x03", b"\x04\x02\x00\x01", b"\x03\x04\x00\x01"],
+    ids=["empty", "function-only", "wrong-function", "short-data"],
+)
+def test_client_refuses_a_malformed_reply(pdu):
+    listener = socket.create_server(("127.0.0.1", 0))
+
+    def answer():
+        conn, _ = listener.accept()
+        with conn:
+            tid = conn.recv(12)[:2]
+            conn.sendall(tid + struct.pack(">HHB", 0, len(pdu) + 1, 1) + pdu)
+
+    threading.Thread(target=answer, daemon=True).start()
+    with listener, ModbusClient(port=listener.getsockname()[1]) as c:
+        with pytest.raises(ConnectionError):
+            c.read_holding_registers(0, 2)
 
 
 def test_truncated_request(sim):
