@@ -93,6 +93,9 @@ function svg(tag, attrs, text) {
   return el;
 }
 
+// Sensor noise around an empty tank must not read -0.0 % or -1 mm.
+const unsigned = (value) => Math.max(0, value);
+
 function levelY(pct) {
   return TANK_BOTTOM - Math.max(0, Math.min(100, pct)) * TANK_PX_PER_PCT;
 }
@@ -226,9 +229,9 @@ function renderMimic(s) {
   $("pipe-out").classList.toggle("flowing", s.outflow > 1);
   $("v-inflow").textContent = s.inflow.toFixed(1) + " L/min";
   $("v-outflow").textContent = s.outflow.toFixed(1) + " L/min";
-  $("v-level").textContent = s.level.toFixed(1) + " %";
-  $("v-mm").textContent = Math.round(s.level_mm) + " mm";
-  $("v-volume").textContent = Math.round(s.capacity_l * s.level / 100) + " L";
+  $("v-level").textContent = unsigned(s.level).toFixed(1) + " %";
+  $("v-mm").textContent = Math.round(unsigned(s.level_mm)) + " mm";
+  $("v-volume").textContent = Math.round(unsigned(s.capacity_l * s.level / 100)) + " L";
   $("v-overflow").textContent = s.overflow > 0 ? `Overflowing ${s.overflow.toFixed(0)} L/min` : "";
 
   const active = new Set(s.alarms.filter((a) => a.active).map((a) => a.tag));
@@ -541,7 +544,7 @@ async function startDemo() {
       snapshot: ns.get("snapshot"),
       command: ns.get("command"),
     };
-    setHistory(JSON.parse(ns.get("history")()), 0);
+    history = JSON.parse(ns.get("history")());
   } catch (err) {
     note.textContent = `The demo could not start: ${err.message}. Install tanksim with pip to run it locally.`;
     return;

@@ -206,3 +206,14 @@ def test_empty_setpoint_is_explained_in_the_form(page):
     page.fill("#sp-start", "")
     page.click("text=Apply setpoints")
     assert page.text_content("#sp-message") == "Pump start must be a number from 0 to 100. Nothing was applied."
+
+
+def test_empty_tank_does_not_read_negative(page, server):
+    process = server.sim.process
+    process.sensor_stuck = True
+    process._sensor = -0.04
+    server.sim.step(1)
+    next_frame(page)
+    assert page.text_content("#v-level") == "0.0 %"
+    assert page.text_content("#v-mm") == "0 mm"
+    assert page.text_content("#v-volume") == "0 L"
