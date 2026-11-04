@@ -13,7 +13,7 @@
     <h1>T-101 Elevated tank</h1>
     <span class="sub">Fill pump P-101, level transmitter LT-101</span>
   </div>
-  <div class="clock" id="clock" aria-label="Plant time">--:--</div>
+  <div class="clock" id="clock" role="timer" aria-label="Plant time">--:--</div>
   <button class="alarm-summary" id="alarm-summary" type="button" aria-live="polite">No alarms</button>
 </header>
 
@@ -125,7 +125,7 @@
 
   <section class="panel trend" aria-labelledby="trend-title">
     <h2 id="trend-title">Level, last 2 hours</h2>
-    <canvas id="trend" height="220" aria-label="Level trend"></canvas>
+    <canvas id="trend" height="220" role="img" aria-label="Level trend"></canvas>
     <p class="legend"><span class="key key-level"></span>Level <span class="key key-band"></span>Start and stop <span class="key key-pump"></span>Pump running</p>
   </section>
 
@@ -161,6 +161,7 @@
         <button type="button" data-fault="sensor" aria-pressed="false">Freeze the level sensor</button>
         <button type="button" data-fault="leak" aria-pressed="false">Open a 40 L/min leak</button>
       </div>
+      <p class="hint" id="sim-hint"></p>
     </div>
     <p class="truth">True level <strong id="v-true">--.- %</strong></p>
   </div>

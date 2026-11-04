@@ -7,7 +7,7 @@
   --raised: #eceef0;
   --line: #7d858c;
   --ink: #1d2226;
-  --muted: #555c63;
+  --muted: #4b5258;
   --water: #7d9bb3;
   --alarm-high: #c8102e;
   --alarm-medium: #e8a317;
@@ -184,6 +184,7 @@ tr.unacked .state-cell { animation: flash-cell 1s steps(1) infinite; }
 .toggles { display: flex; flex-wrap: wrap; gap: 6px; }
 .toggles button[aria-pressed="true"] { background: var(--alarm-high); border-color: var(--alarm-high); }
 input[type="range"] { width: 100%; accent-color: var(--ink); }
+#sim-hint { flex-basis: 100%; margin: 0; }
 .truth { margin: 6px 0 0; color: var(--muted); }
 .truth strong { color: var(--ink); font-size: 18px; }
 

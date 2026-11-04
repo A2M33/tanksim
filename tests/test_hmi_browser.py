@@ -245,3 +245,26 @@ def test_phone_layout_is_readable_and_fits(browser, server):
     assert min(heights) >= 44
     assert page.errors == []
     page.close()
+
+
+def test_faceplate_says_why_the_pump_is_held_off(page, server):
+    page.click("#btn-manual")
+    page.click("#btn-start")
+    process = server.sim.process
+    process.volume_l = process.capacity_l * 0.97
+    server.sim.step(1)
+    server.sim.step(1)
+    page.wait_for_function("document.getElementById('cmd-hint').textContent.includes('interlock holds')")
+    assert page.is_disabled("#btn-start")
+    assert page.get_attribute("#btn-start", "aria-pressed") == "false"
+
+
+def test_simulator_explains_a_fault_the_plc_cannot_see_yet(page):
+    page.click("text=Break the pump")
+    page.wait_for_function("document.getElementById('sim-hint').textContent !== ''")
+    assert "next start" in page.text_content("#sim-hint")
+
+
+def test_paused_plant_says_so_in_the_header(page):
+    page.click("#btn-pause")
+    page.wait_for_function("document.getElementById('clock').textContent.endsWith('paused')")

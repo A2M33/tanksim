@@ -222,7 +222,7 @@ function renderMimic(s) {
   const fault = s.alarms.some((a) => a.tag === "PUMP" && a.active);
   pump.classList.toggle("running", s.pump_running);
   pump.classList.toggle("fault", fault);
-  $("v-pump").textContent = fault ? "Fault" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped";
+  setText("v-pump", fault ? "Fault" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped");
   setText("v-delay", s.restart_delay > 0 && !s.pump_cmd ? `Restart in ${Math.ceil(s.restart_delay)} s` : "");
 
   $("pipe-in").classList.toggle("flowing", s.inflow > 1);
@@ -238,7 +238,7 @@ function renderMimic(s) {
     setText("m-" + name, text);
   }
   setText("v-mm", Math.round(unsigned(s.level_mm)) + " mm");
-  $("v-overflow").textContent = s.overflow > 0 ? `Overflowing ${s.overflow.toFixed(0)} L/min` : "";
+  setText("v-overflow", s.overflow > 0 ? `Overflowing ${s.overflow.toFixed(0)} L/min` : "");
 
   const active = new Set(s.alarms.filter((a) => a.active).map((a) => a.tag));
   if (!changed("marks", [s.setpoints, [...active]])) return;
@@ -256,23 +256,28 @@ function renderMimic(s) {
 
 function renderFaceplate(s) {
   const fault = s.alarms.some((a) => a.tag === "PUMP" && a.active);
+  const hh = s.alarms.some((a) => a.tag === "HH" && a.active);
+  const sensorFault = s.alarms.some((a) => a.tag === "SENSOR" && a.active);
   const fp = $("fp-state");
-  fp.textContent = fault ? "Fault, reset to restart" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped";
+  setText("fp-state", fault ? "Fault, reset to restart" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped");
   fp.classList.toggle("fault", fault);
 
   $("btn-auto").setAttribute("aria-pressed", s.auto);
   $("btn-manual").setAttribute("aria-pressed", !s.auto);
-  $("btn-start").disabled = s.auto;
+  $("btn-start").disabled = s.auto || fault || hh;
   $("btn-stop").disabled = s.auto;
   $("btn-start").setAttribute("aria-pressed", !s.auto && s.manual_run);
   $("btn-stop").setAttribute("aria-pressed", !s.auto && !s.manual_run);
-  $("cmd-hint").textContent = s.auto
-    ? "In auto the PLC starts the pump at the start level and stops it at the stop level."
-    : "In manual you run the pump. The high high interlock still stops it.";
+  setText("cmd-hint",
+    fault ? "The pump did not follow its command. It stays off until you reset the fault."
+      : hh ? "The high high interlock holds the pump off until the level drops."
+        : sensorFault && s.auto ? "The PLC cannot trust the level, so it holds the pump off in auto."
+          : s.auto ? "In auto the PLC starts the pump at the start level and stops it at the stop level."
+            : "In manual you run the pump. The high high interlock still stops it.");
 
-  $("v-starts").textContent = s.starts;
+  setText("v-starts", s.starts);
   const min = Math.floor(s.run_s / 60);
-  $("v-runtime").textContent = `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`;
+  setText("v-runtime", `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, "0")} min`);
   $("btn-ack").disabled = !s.alarms.some((a) => !a.acked);
   $("btn-reset").disabled = !s.alarms.some((a) => (a.tag === "PUMP" || a.tag === "SENSOR") && a.active);
 
@@ -356,7 +361,12 @@ function renderSim(s) {
   }
   const faults = { pump: s.sim.pump_broken, sensor: s.sim.sensor_stuck, leak: s.sim.leak_lpm > 0 };
   for (const b of document.querySelectorAll("[data-fault]")) b.setAttribute("aria-pressed", faults[b.dataset.fault]);
-  $("v-true").textContent = s.level_true.toFixed(1) + " %";
+  setText("v-true", s.level_true.toFixed(1) + " %");
+  const seen = (tag) => s.alarms.some((a) => a.tag === tag && a.active);
+  setText("sim-hint",
+    s.sim.pump_broken && !s.pump_cmd && !seen("PUMP") ? "The pump is off, so the PLC notices at the next start."
+      : s.sim.sensor_stuck && !seen("SENSOR") ? "The PLC calls the reading frozen after 2 plant minutes."
+        : "");
 }
 
 function drawTrend() {
@@ -435,7 +445,7 @@ async function loadHistory() {
 function render(s) {
   if (!state) setLive(true);
   state = s;
-  $("clock").textContent = hhmm(s.minute);
+  setText("clock", hhmm(s.minute) + (s.sim.paused ? " paused" : ""));
   let last = history[history.length - 1];
   if (last && s.clock < last[0]) {  // a restarted server begins a new day
     history = [];
