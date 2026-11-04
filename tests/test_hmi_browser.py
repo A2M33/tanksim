@@ -217,3 +217,31 @@ def test_empty_tank_does_not_read_negative(page, server):
     assert page.text_content("#v-level") == "0.0 %"
     assert page.text_content("#v-mm") == "0 mm"
     assert page.text_content("#v-volume") == "0 L"
+
+
+def test_phone_layout_is_readable_and_fits(browser, server):
+    page = open_page(browser, server, width=375, height=812)
+    page.wait_for_function("state !== null")
+    server.sim.step(1)
+    next_frame(page)
+    assert page.evaluate("document.documentElement.scrollWidth") <= 375
+    assert page.is_visible("#m-level")
+    assert not page.is_visible("#v-level")
+    assert page.text_content("#m-level") == page.text_content("#v-level")
+    smallest = page.evaluate("""() => {
+        const svg = document.getElementById("mimic");
+        const scale = svg.getBoundingClientRect().width / 660;
+        const sizes = [...svg.querySelectorAll("text")]
+            .filter((t) => t.textContent && getComputedStyle(t).display !== "none"
+                && t.closest("g.readout, .value") === null)
+            .map((t) => parseFloat(getComputedStyle(t).fontSize) * scale);
+        return Math.min(...sizes);
+    }""")
+    assert smallest >= 9
+    heights = page.evaluate(
+        "[...document.querySelectorAll('button')].filter((b) => b.offsetParent)"
+        ".map((b) => b.getBoundingClientRect().height)"
+    )
+    assert min(heights) >= 44
+    assert page.errors == []
+    page.close()

@@ -39,7 +39,7 @@
       <text class="value" id="v-inflow" x="258" y="212" text-anchor="end">0.0 L/min</text>
 
       <!-- pump -->
-      <g id="pump" class="pump" tabindex="-1">
+      <g id="pump" class="pump">
         <circle cx="206" cy="366" r="22"/>
         <path d="M196 352 L226 366 L196 380 Z"/>
       </g>
@@ -72,6 +72,13 @@
       <text class="label" x="640" y="370" text-anchor="end">To consumers</text>
       <text class="note alarm-text" id="v-overflow" x="440" y="392" text-anchor="middle"></text>
     </svg>
+    <!-- on a phone the drawing is too small for numbers, so they move here -->
+    <dl class="readouts">
+      <div><dt>LT-101 level</dt><dd class="big-value" id="m-level">--.- %</dd></div>
+      <div><dt>Volume</dt><dd id="m-volume">---- L</dd></div>
+      <div><dt>FT-101 inflow</dt><dd id="m-inflow">0.0 L/min</dd></div>
+      <div><dt>FT-102 outflow</dt><dd id="m-outflow">0.0 L/min</dd></div>
+    </dl>
   </section>
 
   <section class="panel faceplate" aria-labelledby="fp-title">

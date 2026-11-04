@@ -146,6 +146,8 @@ button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); 
 .sp-message { color: var(--muted); min-height: 2.8em; margin: 8px 0; font-size: 13px; }
 .sp-message.error { color: var(--alarm-high); font-weight: 600; }
 
+.readouts { display: none; }
+
 /* trend */
 #trend { width: 100%; height: 220px; display: block; background: var(--raised); border: 1px solid #b4babf; }
 .legend { font-size: 13px; color: var(--muted); margin: 8px 0 0; display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; }
@@ -199,4 +201,34 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
   .clock { grid-row: 1; grid-column: 2; font-size: 22px; }
   .alarm-summary { grid-column: 1 / -1; justify-self: stretch; }
   .sim { margin: 0 10px 10px; }
+}
+
+/* fingers need bigger targets than a mouse */
+@media (pointer: coarse), (max-width: 600px) {
+  button { min-height: 44px; }
+  .sp-grid input { min-height: 40px; }
+  input[type="range"] { height: 32px; }
+}
+
+/* The drawing shrinks to half size on a phone. Its labels grow to stay
+   readable, and the numbers move to the readouts below it. */
+@media (max-width: 600px) {
+  .panel { padding: 12px; }
+  #mimic .value, #mimic .readout { display: none; }
+  #mimic .tag, #mimic .label { font-size: 21px; }
+  #mimic .state { font-size: 24px; }
+  #mimic .note { font-size: 20px; }
+  #mimic .scale text, #mimic .sp-mark text { font-size: 19px; }
+  #v-delay { transform: translateY(2px); }
+  .readouts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 16px;
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .readouts dt { color: var(--muted); font-size: 13px; }
+  .readouts dd { margin: 0; font-size: 18px; }
+  .readouts .big-value { font-size: 24px; font-weight: 600; line-height: 1.2; }
 }

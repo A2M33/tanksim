@@ -223,15 +223,21 @@ function renderMimic(s) {
   pump.classList.toggle("running", s.pump_running);
   pump.classList.toggle("fault", fault);
   $("v-pump").textContent = fault ? "Fault" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped";
-  $("v-delay").textContent = s.restart_delay > 0 && !s.pump_cmd ? `Restart allowed in ${Math.ceil(s.restart_delay)} s` : "";
+  setText("v-delay", s.restart_delay > 0 && !s.pump_cmd ? `Restart in ${Math.ceil(s.restart_delay)} s` : "");
 
   $("pipe-in").classList.toggle("flowing", s.inflow > 1);
   $("pipe-out").classList.toggle("flowing", s.outflow > 1);
-  $("v-inflow").textContent = s.inflow.toFixed(1) + " L/min";
-  $("v-outflow").textContent = s.outflow.toFixed(1) + " L/min";
-  $("v-level").textContent = unsigned(s.level).toFixed(1) + " %";
-  $("v-mm").textContent = Math.round(unsigned(s.level_mm)) + " mm";
-  $("v-volume").textContent = Math.round(unsigned(s.capacity_l * s.level / 100)) + " L";
+  const readouts = {
+    inflow: s.inflow.toFixed(1) + " L/min",
+    outflow: s.outflow.toFixed(1) + " L/min",
+    level: unsigned(s.level).toFixed(1) + " %",
+    volume: Math.round(unsigned(s.capacity_l * s.level / 100)) + " L",
+  };
+  for (const [name, text] of Object.entries(readouts)) {
+    setText("v-" + name, text);
+    setText("m-" + name, text);
+  }
+  setText("v-mm", Math.round(unsigned(s.level_mm)) + " mm");
   $("v-overflow").textContent = s.overflow > 0 ? `Overflowing ${s.overflow.toFixed(0)} L/min` : "";
 
   const active = new Set(s.alarms.filter((a) => a.active).map((a) => a.tag));
