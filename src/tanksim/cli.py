@@ -9,9 +9,10 @@ import time
 import webbrowser
 
 from . import __version__
+from .commands import SPEEDS
 from .modbus import ModbusClient, ModbusServer
 from .sim import ModbusError, Simulator
-from .web import SPEEDS, HmiServer
+from .web import HmiServer
 
 TICK_S = 0.1
 
@@ -113,6 +114,22 @@ def cmd_poll(args: argparse.Namespace) -> int:
             return 1
 
 
+def port_number(text: str) -> int:
+    if not text.isdecimal() or int(text) > 65535:
+        raise argparse.ArgumentTypeError(f"{text} is not a port from 0 to 65535")
+    return int(text)
+
+
+def poll_interval(text: str) -> float:
+    try:
+        seconds = float(text)
+    except ValueError:
+        seconds = -1.0
+    if not 0 < seconds < 86400:
+        raise argparse.ArgumentTypeError(f"{text} is not a number of seconds above 0")
+    return seconds
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="tanksim",
@@ -120,16 +137,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"tanksim {__version__}")
     parser.add_argument("--host", default="127.0.0.1", help="address to listen on (0.0.0.0 for the whole network)")
-    parser.add_argument("--http-port", type=int, default=8080, help="HMI port (default 8080)")
-    parser.add_argument("--modbus-port", type=int, default=5020, help="Modbus TCP port (default 5020; 502 needs admin rights)")
+    parser.add_argument("--http-port", type=port_number, default=8080, help="HMI port (default 8080)")
+    parser.add_argument("--modbus-port", type=port_number, default=5020, help="Modbus TCP port (default 5020; 502 needs admin rights)")
     parser.add_argument("--speed", type=int, choices=SPEEDS, default=20, help="simulated seconds per real second (default 20)")
     parser.add_argument("--no-browser", action="store_true", help="do not open the HMI in a browser")
 
     sub = parser.add_subparsers(dest="command")
     poll = sub.add_parser("poll", help="read a running tanksim over Modbus TCP and print one line per second")
-    poll.add_argument("--host", default="127.0.0.1")
-    poll.add_argument("--port", type=int, default=5020)
-    poll.add_argument("--interval", type=float, default=1.0, help="seconds between reads")
+    # SUPPRESS, or the default here would override `tanksim --host x poll`.
+    poll.add_argument("--host", default=argparse.SUPPRESS)
+    poll.add_argument("--port", type=port_number, default=5020)
+    poll.add_argument("--interval", type=poll_interval, default=1.0, help="seconds between reads")
     poll.add_argument("--once", action="store_true", help="print one line and exit")
     return parser
 

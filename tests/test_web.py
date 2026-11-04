@@ -6,7 +6,7 @@ import urllib.request
 import pytest
 
 from tanksim import web
-from tanksim.cli import format_poll
+from tanksim.cli import build_parser, format_poll
 from tanksim.process import Process
 from tanksim.sim import Simulator
 from tanksim.web import HmiServer
@@ -157,6 +157,30 @@ def test_unknown_path(server):
     with pytest.raises(urllib.error.HTTPError) as err:
         get(server, "/nope")
     assert err.value.code == 404
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["--http-port", "99999"],
+        ["--modbus-port", "-1"],
+        ["poll", "--port", "abc"],
+        ["poll", "--interval", "-1"],
+        ["poll", "--interval", "nan"],
+    ],
+)
+def test_bad_numbers_are_usage_errors(argv, capsys):
+    with pytest.raises(SystemExit) as err:
+        build_parser().parse_args(argv)
+    assert err.value.code == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_poll_takes_the_host_from_either_side():
+    parse = build_parser().parse_args
+    assert parse(["poll"]).host == "127.0.0.1"
+    assert parse(["--host", "10.0.0.5", "poll"]).host == "10.0.0.5"
+    assert parse(["poll", "--host", "10.0.0.6"]).host == "10.0.0.6"
 
 
 def test_poll_line():

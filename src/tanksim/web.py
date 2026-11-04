@@ -16,7 +16,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
 
-from .commands import SPEEDS, CommandError, apply_command
+from .commands import CommandError, apply_command
 from .sim import Simulator
 
 STATIC = {
