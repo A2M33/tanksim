@@ -125,3 +125,16 @@ def test_link_loss_locks_the_controls_until_the_stream_is_back(page, server):
     page.wait_for_selector("#link-lost", state="hidden", timeout=15000)
     assert not page.evaluate("document.querySelector('main').inert")
     page.errors[:] = [e for e in page.errors if "api/stream" not in e and "ERR_" not in e]
+
+
+def test_trend_keeps_running_when_the_plant_clock_goes_back(page, server):
+    server.sim.step(120)
+    next_frame(page)
+    server.sim.process.clock_s -= 3600  # what a restarted server looks like
+    server.sim.step(30)
+    next_frame(page)
+    newest, now = page.evaluate("[history[history.length - 1][0], state.clock]")
+    assert newest <= now
+    server.sim.step(30)
+    next_frame(page)
+    assert page.evaluate("history[history.length - 1][0]") > newest

@@ -317,6 +317,7 @@ function drawTrend() {
   const x = (t) => left + (right - left) * (1 - (now - t) / TREND_SPAN_S);
   const y = (pct) => bottom - (bottom - top) * pct / 100;
 
+  ctx.save();
   ctx.font = "11px " + css.getPropertyValue("--font");
   ctx.fillStyle = muted;
   ctx.strokeStyle = "#c3c8cc";
@@ -330,6 +331,10 @@ function drawTrend() {
     ctx.beginPath(); ctx.moveTo(x(t), top); ctx.lineTo(x(t), bottom); ctx.stroke();
     ctx.fillText(hhmm(t / 60), x(t) - 14, h - 6);
   }
+
+  ctx.beginPath();
+  ctx.rect(left, top, right - left, bottom - top);
+  ctx.clip();
 
   // pump running band along the bottom
   ctx.fillStyle = "#a3abb2";
@@ -349,16 +354,32 @@ function drawTrend() {
   ctx.beginPath();
   history.forEach(([t, level], i) => (i ? ctx.lineTo(x(t), y(level)) : ctx.moveTo(x(t), y(level))));
   ctx.stroke();
+  ctx.restore();
+}
+
+function setHistory(samples, now) {
+  history = samples.filter(([t]) => now - t <= TREND_SPAN_S);
+}
+
+async function loadHistory() {
+  const res = await fetch("api/history");
+  if (!res.ok) throw new Error(res.statusText);
+  const samples = await res.json();
+  setHistory(samples, samples.length ? samples[samples.length - 1][0] : 0);
 }
 
 function render(s) {
   if (!state) setLive(true);
   state = s;
   $("clock").textContent = hhmm(s.minute);
-  const last = history[history.length - 1];
+  let last = history[history.length - 1];
+  if (last && s.clock < last[0]) {  // a restarted server begins a new day
+    history = [];
+    last = null;
+  }
   if (!last || s.clock - last[0] >= 10) {
     history.push([s.clock, s.level, s.inflow, s.outflow]);
-    while (history.length && s.clock - history[0][0] > TREND_SPAN_S) history.shift();
+    setHistory(history, s.clock);
   }
   renderMimic(s);
   renderFaceplate(s);
@@ -410,16 +431,15 @@ async function start() {
   buildSpeeds();
   wire();
   // The Pages build marks itself, so it never probes for a server.
-  const res = document.documentElement.hasAttribute("data-demo")
-    ? null
-    : await fetch("api/history").catch(() => null);
-  if (res && res.ok) {
-    history = await res.json();
+  const server = !document.documentElement.hasAttribute("data-demo")
+    && await loadHistory().then(() => true, () => false);
+  if (server) {
     const stream = new EventSource("api/stream");
     stream.onmessage = (e) => {
       if (!$("link-lost").hidden) {
         $("link-lost").hidden = true;
         setLive(true);
+        loadHistory().catch(() => {});  // fill the gap, keep what we have if it fails
       }
       render(JSON.parse(e.data));
     };
@@ -460,7 +480,7 @@ async function startDemo() {
       snapshot: ns.get("snapshot"),
       command: ns.get("command"),
     };
-    history = JSON.parse(ns.get("history")());
+    setHistory(JSON.parse(ns.get("history")()), 0);
   } catch (err) {
     note.textContent = `The demo could not start: ${err.message}. Install tanksim with pip to run it locally.`;
     return;
