@@ -75,7 +75,10 @@ class Plc:
     def set_auto(self, auto: bool) -> None:
         if auto != self.auto:
             self.auto = auto
-            self.manual_run = self.pump_cmd  # bumpless: keep the pump as it is
+            # Bumpless both ways: the pump stays as it is until the next
+            # limit, whatever the level did while the other mode was in charge.
+            self.manual_run = self.pump_cmd
+            self._auto_demand = self.pump_cmd
             self._log("OPR", "Mode set to " + ("auto" if auto else "manual"))
 
     def set_manual_run(self, run: bool) -> None:
@@ -156,8 +159,7 @@ class Plc:
         interlocked = hh or self.pump_fault or (self.auto and self.sensor_fault)
         if interlocked:
             want = False
-            if self.pump_fault:
-                self.manual_run = False
+            self.manual_run = False  # the operator must start it again
         if want and not self.pump_cmd and clock - self._off_since < MIN_OFF_S:
             want = False  # restart delay still running
 

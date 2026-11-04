@@ -56,6 +56,20 @@ def test_high_high_interlocks_manual_pump():
     assert r.plc.alarms["HH"].active
 
 
+def test_manual_pump_stays_off_after_high_high_clears():
+    r = Rig()
+    r.plc.set_auto(False)
+    r.plc.set_manual_run(True)
+    r.scan(level=50)
+    assert not r.scan(level=96)
+    assert not r.plc.manual_run
+    r.scan(seconds=MIN_OFF_S + 1, level=90)  # interlock clear, delay over
+    assert not r.plc.alarms["HH"].active
+    assert not r.plc.pump_cmd
+    r.plc.set_manual_run(True)
+    assert r.scan()
+
+
 def test_pump_fault_latches_until_reset():
     r = Rig()
     r.scan(level=10)
@@ -121,6 +135,26 @@ def test_switch_to_manual_is_bumpless():
     assert r.scan(level=50)
     r.plc.set_manual_run(False)
     assert not r.scan()
+
+
+def test_switch_to_auto_keeps_a_running_pump():
+    r = Rig()
+    r.plc.set_auto(False)
+    r.plc.set_manual_run(True)
+    assert r.scan(level=50)
+    r.plc.set_auto(True)
+    assert r.scan(seconds=5)  # inside the band the pump keeps filling
+    assert not r.scan(level=80.5)
+
+
+def test_switch_to_auto_keeps_a_stopped_pump():
+    r = Rig()
+    r.plc.set_auto(False)
+    r.scan(seconds=MIN_OFF_S, level=19)  # the level dipped below start in manual
+    r.scan(level=50)
+    r.plc.set_auto(True)
+    assert not r.scan(seconds=MIN_OFF_S + 1)
+    assert r.scan(level=19.5)
 
 
 def test_setpoints_must_stay_in_order():
