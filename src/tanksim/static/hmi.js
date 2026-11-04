@@ -26,7 +26,8 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const $ = (id) => document.getElementById(id);
 let state = null;
 let history = [];
-let spDirty = false;
+const spEdited = new Set(); // setpoints the operator changed and has not applied yet
+let spProblem = null; // { message, keys } from the last Apply
 let demo = null; // set when the simulator runs in the browser (GitHub Pages)
 
 const PYODIDE = "https://cdn.jsdelivr.net/pyodide/v0.27.2/full/";
@@ -151,11 +152,46 @@ function buildSetpointForm() {
     label.htmlFor = id;
     label.textContent = SETPOINT_NAMES[key];
     const input = document.createElement("input");
-    Object.assign(input, { id, type: "number", min: 0, max: 100, step: 0.5, required: true });
+    // step "any": Modbus can write 20.3, and that must not make the form invalid.
+    Object.assign(input, { id, type: "number", min: 0, max: 100, step: "any" });
     input.dataset.key = key;
-    input.addEventListener("input", () => { spDirty = true; });
-    grid.append(label, input);
+    input.addEventListener("input", () => {
+      if (spNumber(input) === state.setpoints[key]) spEdited.delete(key);
+      else spEdited.add(key);
+      if (spProblem) spProblem = setpointProblem(spValues());
+      renderSetpointForm(state);
+    });
+    const live = document.createElement("span");
+    live.id = id + "-live";
+    live.className = "sp-live";
+    input.setAttribute("aria-describedby", live.id);
+    grid.append(label, input, live);
   }
+}
+
+const spInputs = () => [...$("sp-form").querySelectorAll("input")];
+const spNumber = (input) => (input.value === "" ? NaN : Number(input.value));
+const spValues = () => Object.fromEntries(spInputs().map((i) => [i.dataset.key, spNumber(i)]));
+
+// Same rules and words as Plc.set_setpoints, which has the last word. Asking
+// here first gives the answer while typing, without a failed request.
+function setpointProblem(values) {
+  const bottomUp = SETPOINTS.map(([key]) => key).reverse();
+  for (const key of bottomUp) {
+    if (!(values[key] >= 0 && values[key] <= 100)) {
+      return { message: `${SETPOINT_NAMES[key]} must be a number from 0 to 100`, keys: [key] };
+    }
+  }
+  for (let i = 0; i + 1 < bottomUp.length; i++) {
+    const [lower, upper] = [bottomUp[i], bottomUp[i + 1]];
+    if (values[lower] >= values[upper]) {
+      return {
+        message: `${SETPOINT_NAMES[lower]} (${values[lower]} %) must be below ${SETPOINT_NAMES[upper].toLowerCase()} (${values[upper]} %)`,
+        keys: [lower, upper],
+      };
+    }
+  }
+  return null;
 }
 
 function buildSpeeds() {
@@ -231,10 +267,29 @@ function renderFaceplate(s) {
   $("btn-ack").disabled = !s.alarms.some((a) => !a.acked);
   $("btn-reset").disabled = !s.alarms.some((a) => (a.tag === "PUMP" || a.tag === "SENSOR") && a.active);
 
-  const form = $("sp-form");
-  if (!spDirty && !form.contains(document.activeElement)) {
-    for (const input of form.querySelectorAll("input")) input.value = s.setpoints[input.dataset.key];
+  renderSetpointForm(s);
+}
+
+// A field the operator changed keeps the entry, shows the value the PLC runs
+// on and counts as edited until the PLC reports the same number. The others
+// follow the PLC. The tank markers always show the PLC's values.
+function renderSetpointForm(s) {
+  for (const input of spInputs()) {
+    const key = input.dataset.key;
+    const live = s.setpoints[key];
+    if (spNumber(input) === live) spEdited.delete(key);
+    else if (!spEdited.has(key)) input.value = live;
+    const edited = spEdited.has(key);
+    input.classList.toggle("pending", edited);
+    input.setAttribute("aria-invalid", Boolean(spProblem && spProblem.keys.includes(key)));
+    setText(input.id + "-live", edited ? `now ${live}` : "");
   }
+  if (!spEdited.size) spProblem = null;
+  $("sp-apply").disabled = $("sp-discard").disabled = !spEdited.size;
+  $("sp-message").classList.toggle("error", Boolean(spProblem));
+  setText("sp-message", spProblem
+    ? `${spProblem.message}. Nothing was applied.`
+    : spEdited.size ? "The PLC keeps its setpoints until you apply the changes." : "");
 }
 
 function renderAlarms(s) {
@@ -408,18 +463,24 @@ function wire() {
     b.addEventListener("click", () => act("fault", { name: b.dataset.fault, value: b.getAttribute("aria-pressed") !== "true" }));
   }
 
+  // Send only what the operator changed, so a value that moved over Modbus
+  // in the meantime is not written back.
   $("sp-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const value = {};
-    for (const input of e.target.querySelectorAll("input")) value[input.dataset.key] = Number(input.value);
-    try {
-      await send("setpoints", { value });
-      $("sp-error").textContent = "";
-      spDirty = false;
-      document.activeElement.blur();
-    } catch (err) {
-      $("sp-error").textContent = err.message;
+    if (!spEdited.size) return;
+    spProblem = setpointProblem(spValues());
+    if (!spProblem) {
+      const values = spValues();
+      const value = Object.fromEntries([...spEdited].map((key) => [key, values[key]]));
+      await send("setpoints", { value }).catch((err) => { spProblem = { message: err.message, keys: [] }; });
     }
+    renderSetpointForm(state);
+  });
+
+  $("sp-discard").addEventListener("click", () => {
+    spEdited.clear();
+    spProblem = null;
+    renderSetpointForm(state);
   });
 
   window.addEventListener("resize", drawTrend);

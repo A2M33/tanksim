@@ -105,11 +105,14 @@
       <button type="button" id="btn-reset">Reset faults</button>
     </div>
 
-    <form id="sp-form" class="setpoints">
+    <form id="sp-form" class="setpoints" novalidate>
       <h3>Setpoints, % of tank height</h3>
       <div class="sp-grid" id="sp-grid"></div>
-      <p class="error" id="sp-error" role="alert"></p>
-      <button type="submit">Apply setpoints</button>
+      <p class="sp-message" id="sp-message" role="alert"></p>
+      <div class="actions">
+        <button type="submit" id="sp-apply" disabled>Apply setpoints</button>
+        <button type="button" id="sp-discard" disabled>Discard changes</button>
+      </div>
     </form>
   </section>
 

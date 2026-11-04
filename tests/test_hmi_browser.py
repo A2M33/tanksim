@@ -138,3 +138,71 @@ def test_trend_keeps_running_when_the_plant_clock_goes_back(page, server):
     server.sim.step(30)
     next_frame(page)
     assert page.evaluate("history[history.length - 1][0]") > newest
+
+
+MARKER_Y = "[...document.querySelectorAll('.sp-mark text')].map((t) => t.getAttribute('y'))"
+
+
+def test_refused_setpoint_stays_visible_and_says_why(page, server):
+    before = page.evaluate(MARKER_Y)
+    posts = []
+    page.on("request", lambda r: r.method == "POST" and posts.append(r.url))
+    page.fill("#sp-start", "85")
+    page.click("text=Apply setpoints")
+    assert page.text_content("#sp-message") == (
+        "Pump start (85 %) must be below pump stop (80 %). Nothing was applied."
+    )
+    assert posts == []  # refused in the page, so no failed request in the console
+    next_frame(page)
+    assert page.input_value("#sp-start") == "85"  # the entry survives the next snapshot
+    assert page.text_content("#sp-start-live") == "now 20"
+    assert page.get_attribute("#sp-start", "aria-invalid") == "true"
+    assert page.get_attribute("#sp-stop", "aria-invalid") == "true"
+    assert page.get_attribute("#sp-low", "aria-invalid") == "false"
+    assert page.evaluate(MARKER_Y) == before  # the markers show what the PLC runs on
+    assert server.sim.plc.setpoints["start"] == 20
+
+    page.fill("#sp-stop", "88")  # fixing it clears the error while typing
+    assert page.text_content("#sp-message") == "The PLC keeps its setpoints until you apply the changes."
+    page.click("text=Discard changes")
+    assert page.input_value("#sp-start") == "20"
+    assert page.input_value("#sp-stop") == "80"
+    assert page.text_content("#sp-message") == ""
+    assert page.is_disabled("#sp-apply")
+
+
+def test_applied_setpoint_moves_the_tank_marker(page, server):
+    before = page.evaluate(MARKER_Y)
+    page.fill("#sp-start", "30")
+    page.click("text=Apply setpoints")
+    page.wait_for_function(f"{MARKER_Y}.join() !== {json.dumps(','.join(before))}")
+    assert server.sim.plc.setpoints["start"] == 30
+    assert page.input_value("#sp-start") == "30"
+    assert page.text_content("#sp-start-live") == ""
+    assert page.is_disabled("#sp-apply")
+
+
+def test_apply_does_not_undo_a_value_written_by_another_client(page, server):
+    page.fill("#sp-start", "25")
+    server.sim.plc.set_setpoint("stop", 70)
+    next_frame(page)
+    assert page.input_value("#sp-stop") == "70"  # untouched fields stay live
+    assert page.input_value("#sp-start") == "25"
+    page.click("text=Apply setpoints")
+    page.wait_for_function("state.setpoints.start === 25")
+    assert server.sim.plc.setpoints["stop"] == 70
+
+
+def test_setpoint_from_modbus_with_tenths_keeps_the_form_usable(page, server):
+    server.sim.write_holding_registers(2, [203])  # 20.3 %
+    next_frame(page)
+    assert page.input_value("#sp-start") == "20.3"
+    page.fill("#sp-stop", "70")
+    page.click("text=Apply setpoints")
+    page.wait_for_function("state.setpoints.stop === 70")
+
+
+def test_empty_setpoint_is_explained_in_the_form(page):
+    page.fill("#sp-start", "")
+    page.click("text=Apply setpoints")
+    assert page.text_content("#sp-message") == "Pump start must be a number from 0 to 100. Nothing was applied."
