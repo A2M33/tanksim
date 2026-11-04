@@ -1,9 +1,11 @@
 import json
+import socket
 import urllib.error
 import urllib.request
 
 import pytest
 
+from tanksim import web
 from tanksim.cli import format_poll
 from tanksim.process import Process
 from tanksim.sim import Simulator
@@ -95,6 +97,48 @@ def test_malformed_setpoints_get_a_readable_error(server, value, error):
 def test_demand_must_be_a_number(server):
     assert post(server, {"cmd": "demand", "value": True})[0] == 400
     assert server.sim.process.demand_scale == 1
+
+
+def raw_post(srv, head, body=b""):
+    """Send a hand-made request and return the status line."""
+    with socket.create_connection(("127.0.0.1", srv.server_address[1]), timeout=3) as s:
+        s.sendall(b"POST /api/command HTTP/1.1\r\nHost: x\r\n" + head + b"\r\n\r\n" + body)
+        return s.recv(200).split(b"\r\n")[0]
+
+
+@pytest.mark.parametrize(
+    "body",
+    [b"{nope", b'\xff\xfe{"cmd":"ack"}', b"[" * 60_000],
+    ids=["syntax", "utf8", "nesting"],
+)
+def test_body_that_is_not_json_gets_400(server, body):
+    assert b" 400 " in raw_post(server, b"Content-Length: %d" % len(body), body)
+
+
+@pytest.mark.parametrize("length", [b"abc", b"-1", b"999999999"])
+def test_bad_content_length_gets_400(server, length):
+    assert b" 400 " in raw_post(server, b"Content-Length: " + length)
+
+
+def test_command_path_may_carry_a_query(server):
+    with socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=3) as s:
+        s.sendall(b'POST /api/command?x=1 HTTP/1.1\r\nContent-Length: 13\r\n\r\n{"cmd":"ack"}')
+        assert b" 200 " in s.recv(200)
+
+
+def test_stalled_body_is_dropped(server, monkeypatch):
+    monkeypatch.setattr(web._Handler, "timeout", 0.2)
+    with socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=3) as s:
+        s.sendall(b"POST /api/command HTTP/1.1\r\nContent-Length: 50\r\n\r\n{")
+        assert s.recv(200) == b""  # the server hangs up by itself
+
+
+def test_closed_tab_leaves_no_traceback(server, capsys):
+    try:
+        raise ConnectionAbortedError
+    except ConnectionError:
+        server.handle_error(None, ("127.0.0.1", 1))
+    assert capsys.readouterr().err == ""
 
 
 def test_fault_injection(server):

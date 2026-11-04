@@ -9,6 +9,7 @@ POST /api/command   {"cmd": ..., ...}
 from __future__ import annotations
 
 import json
+import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,10 +24,12 @@ STATIC = {
     "/hmi.js": ("hmi.js", "text/javascript; charset=utf-8"),
 }
 STREAM_INTERVAL_S = 0.25
+MAX_BODY = 64 * 1024
 
 
 class _Handler(BaseHTTPRequestHandler):
     server: "HmiServer"
+    timeout = 10  # drops a client that stalls in the middle of a request
 
     def log_message(self, format, *args) -> None:  # keep the console quiet
         pass
@@ -48,17 +51,26 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(404, {"error": "Not found"})
 
     def do_POST(self) -> None:
-        if self.path != "/api/command":
+        if self.path.split("?", 1)[0] != "/api/command":
             self._json(404, {"error": "Not found"})
             return
         try:
             length = int(self.headers.get("Content-Length", 0))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= MAX_BODY:
+            self._json(400, {"error": f"Content-Length must be 0 to {MAX_BODY}"})
+            return
+        try:
+            # ValueError also covers bad UTF-8, RecursionError deep nesting.
             body = json.loads(self.rfile.read(length) or b"{}")
+        except (ValueError, RecursionError):
+            self._json(400, {"error": "Body is not valid JSON"})
+            return
+        try:
             if not isinstance(body, dict):
                 raise CommandError("Send a JSON object")
             apply_command(self.server.sim, body)
-        except json.JSONDecodeError:
-            self._json(400, {"error": "Body is not valid JSON"})
         except CommandError as err:
             self._json(400, {"error": str(err)})
         else:
@@ -76,7 +88,7 @@ class _Handler(BaseHTTPRequestHandler):
                 self.wfile.write(f"data: {payload}\n\n".encode())
                 self.wfile.flush()
                 time.sleep(STREAM_INTERVAL_S)
-        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+        except ConnectionError:
             pass
 
     def _json(self, status: int, obj) -> None:
@@ -107,3 +119,7 @@ class HmiServer(ThreadingHTTPServer):
     def shutdown(self) -> None:
         self.stopping.set()
         super().shutdown()
+
+    def handle_error(self, request, client_address) -> None:
+        if not isinstance(sys.exc_info()[1], ConnectionError):  # a closed tab is no error
+            super().handle_error(request, client_address)
