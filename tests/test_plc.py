@@ -168,3 +168,23 @@ def test_setpoints_must_stay_in_order():
     with pytest.raises(KeyError):
         plc.set_setpoint("nope", 1)
     assert plc.setpoints["start"] == 30
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), 10**400])
+def test_setpoints_must_be_finite(value):
+    plc = Plc()
+    with pytest.raises(ValueError):
+        plc.set_setpoint("start", value)
+    assert plc.setpoints["start"] == 20
+
+
+def test_setpoint_error_names_the_two_values_in_plain_words():
+    with pytest.raises(ValueError) as err:
+        Plc().set_setpoint("start", 85)
+    assert str(err.value) == "Pump start (85 %) must be below pump stop (80 %)"
+
+
+def test_setpoint_change_reads_as_plain_words_in_the_event_log():
+    plc = Plc()
+    plc.set_setpoint("high_high", 96)
+    assert plc.events[-1][2] == "High high alarm set to 96 %"

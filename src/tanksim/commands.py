@@ -3,6 +3,7 @@ module must not import anything that needs sockets or threads."""
 
 from __future__ import annotations
 
+from .plc import SETPOINT_NAMES
 from .sim import Simulator
 
 SPEEDS = (1, 5, 20, 60)
@@ -10,6 +11,24 @@ SPEEDS = (1, 5, 20, 60)
 
 class CommandError(ValueError):
     pass
+
+
+def _is_number(value) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _apply_setpoints(sim: Simulator, value) -> None:
+    if not isinstance(value, dict):
+        raise CommandError("Setpoints must be an object of names and numbers")
+    for name, number in value.items():
+        if name not in sim.plc.setpoints:
+            raise CommandError(f"Unknown setpoint {name!r}")
+        if not _is_number(number):
+            raise CommandError(f"{SETPOINT_NAMES[name]} must be a number")
+    try:
+        sim.plc.set_setpoints(value)
+    except ValueError as err:
+        raise CommandError(str(err)) from None
 
 
 def apply_command(sim: Simulator, body: dict) -> None:
@@ -28,12 +47,7 @@ def apply_command(sim: Simulator, body: dict) -> None:
         elif cmd == "reset":
             plc.reset_faults()
         elif cmd == "setpoints":
-            try:
-                plc.set_setpoints({k: float(v) for k, v in dict(value).items()})
-            except (KeyError, TypeError) as err:
-                raise CommandError(f"Unknown setpoint {err}") from None
-            except ValueError as err:
-                raise CommandError(str(err).capitalize()) from None
+            _apply_setpoints(sim, value)
         elif cmd == "speed":
             if value not in SPEEDS:
                 raise CommandError(f"Speed must be one of {SPEEDS}")
@@ -41,7 +55,7 @@ def apply_command(sim: Simulator, body: dict) -> None:
         elif cmd == "pause":
             sim.paused = bool(value)
         elif cmd == "demand":
-            if not isinstance(value, (int, float)) or not 0 <= value <= 300:
+            if not _is_number(value) or not 0 <= value <= 300:
                 raise CommandError("Demand must be between 0 and 300 %")
             p.demand_scale = value / 100
         elif cmd == "fault":

@@ -67,9 +67,34 @@ def test_bad_commands_explain_themselves(server):
     status, body = post(server, {"cmd": "manual_run", "value": True})
     assert status == 400 and "manual" in body["error"]
     status, body = post(server, {"cmd": "setpoints", "value": {"start": 90}})
-    assert status == 400 and "rise" in body["error"]
+    assert status == 400 and body["error"] == "Pump start (90 %) must be below pump stop (80 %)"
     assert post(server, {"cmd": "speed", "value": 7})[0] == 400
     assert post(server, {"cmd": "nope"})[0] == 400
+
+
+@pytest.mark.parametrize(
+    "value, error",
+    [
+        (None, "object"),
+        ("abc", "object"),
+        ([1, 2], "object"),
+        ({"nope": 1}, "Unknown setpoint 'nope'"),
+        ({"start": "abc"}, "Pump start must be a number"),
+        ({"start": None}, "Pump start must be a number"),
+        ({"start": True}, "Pump start must be a number"),
+        ({"start": 10**400}, "between 0 and 100"),
+        ({"start": float("nan")}, "between 0 and 100"),
+    ],
+)
+def test_malformed_setpoints_get_a_readable_error(server, value, error):
+    status, body = post(server, {"cmd": "setpoints", "value": value})
+    assert status == 400 and error in body["error"]
+    assert server.sim.plc.setpoints["start"] == 20
+
+
+def test_demand_must_be_a_number(server):
+    assert post(server, {"cmd": "demand", "value": True})[0] == 400
+    assert server.sim.process.demand_scale == 1
 
 
 def test_fault_injection(server):

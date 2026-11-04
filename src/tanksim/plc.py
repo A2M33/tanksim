@@ -10,6 +10,7 @@ cleared and been acknowledged.
 
 from __future__ import annotations
 
+import math
 from collections import deque
 from dataclasses import dataclass
 
@@ -20,6 +21,14 @@ ALARM_DEADBAND_PCT = 1.0
 
 # Ordered from bottom of the tank to top; each must be below the next.
 SETPOINT_ORDER = ("low_low", "low", "start", "stop", "high", "high_high")
+SETPOINT_NAMES = {
+    "low_low": "Low low alarm",
+    "low": "Low alarm",
+    "start": "Pump start",
+    "stop": "Pump stop",
+    "high": "High alarm",
+    "high_high": "High high alarm",
+}
 DEFAULT_SETPOINTS = {
     "low_low": 5.0,
     "low": 15.0,
@@ -95,16 +104,24 @@ class Plc:
         for name in changes:
             if name not in self.setpoints:
                 raise KeyError(name)
-        trial = dict(self.setpoints, **{k: float(v) for k, v in changes.items()})
-        values = [trial[k] for k in SETPOINT_ORDER]
-        if not 0 <= values[0] or not values[-1] <= 100:
-            raise ValueError("setpoints must lie between 0 and 100 %")
-        if any(a >= b for a, b in zip(values, values[1:])):
-            raise ValueError("setpoints must rise: " + " < ".join(SETPOINT_ORDER))
+        out_of_range = ValueError("Setpoints must lie between 0 and 100 %")
+        try:
+            trial = dict(self.setpoints, **{k: float(v) for k, v in changes.items()})
+        except OverflowError:
+            raise out_of_range from None
+        # NaN compares false with everything, so test it before the ordering.
+        if not all(math.isfinite(v) and 0 <= v <= 100 for v in trial.values()):
+            raise out_of_range
+        for lower, upper in zip(SETPOINT_ORDER, SETPOINT_ORDER[1:]):
+            if trial[lower] >= trial[upper]:
+                raise ValueError(
+                    f"{SETPOINT_NAMES[lower]} ({trial[lower]:g} %) must be below "
+                    f"{SETPOINT_NAMES[upper].lower()} ({trial[upper]:g} %)"
+                )
         changed = [k for k in SETPOINT_ORDER if trial[k] != self.setpoints[k]]
         self.setpoints = trial
         for name in changed:
-            self._log("OPR", f"Setpoint {name} set to {trial[name]:g} %")
+            self._log("OPR", f"{SETPOINT_NAMES[name]} set to {trial[name]:g} %")
 
     def acknowledge(self) -> None:
         pending = [a for a in self.alarms.values() if not a.acked]
