@@ -23,6 +23,15 @@ def client(sim):
     server.server_close()
 
 
+def test_port_in_use_is_an_error(sim):
+    server = ModbusServer(sim, port=0)
+    try:
+        with pytest.raises(OSError):
+            ModbusServer(sim, port=server.server_address[1])
+    finally:
+        server.server_close()
+
+
 def test_bit_packing_round_trip():
     bits = [True, False, True, True, False, False, False, False, True]
     packed = pack_bits(bits)

@@ -148,6 +148,11 @@ def test_fault_injection(server):
     assert server.sim.process.pump_broken
 
 
+def test_port_in_use_is_an_error(server):
+    with pytest.raises(OSError):
+        HmiServer(server.sim, port=server.server_address[1])
+
+
 def test_unknown_path(server):
     with pytest.raises(urllib.error.HTTPError) as err:
         get(server, "/nope")

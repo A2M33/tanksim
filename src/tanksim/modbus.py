@@ -7,6 +7,7 @@ followed by the PDU (function code + data). All numbers are big endian.
 
 from __future__ import annotations
 
+import os
 import socket
 import socketserver
 import struct
@@ -136,7 +137,7 @@ class _Handler(socketserver.BaseRequestHandler):
 
 class ModbusServer(socketserver.ThreadingTCPServer):
     daemon_threads = True
-    allow_reuse_address = True
+    allow_reuse_address = os.name != "nt"  # on Windows it lets two servers share a port
 
     def __init__(self, store, host: str = "127.0.0.1", port: int = 5020) -> None:
         self.store = store

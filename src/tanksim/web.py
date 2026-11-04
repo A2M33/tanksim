@@ -9,6 +9,7 @@ POST /api/command   {"cmd": ..., ...}
 from __future__ import annotations
 
 import json
+import os
 import sys
 import threading
 import time
@@ -105,6 +106,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 class HmiServer(ThreadingHTTPServer):
     daemon_threads = True
+    allow_reuse_address = os.name != "nt"  # on Windows it lets two servers share a port
 
     def __init__(self, sim: Simulator, host: str = "127.0.0.1", port: int = 8080) -> None:
         self.sim = sim
