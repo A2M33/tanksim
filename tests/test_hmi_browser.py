@@ -58,15 +58,16 @@ def page(browser, server):
 
 
 def next_frame(page):
-    """Wait for two snapshots, so the page has seen what the test just did."""
+    """Wait for three snapshots: one may have left the server before the test
+    changed anything, so only the later ones are sure to show it."""
     page.evaluate("""() => new Promise((resolve) => {
-        const seen = state;
+        let seen = state, left = 3;
         const poll = () => {
-            if (state !== seen) { resolve(); } else { setTimeout(poll, 20); }
+            if (state !== seen) { seen = state; left -= 1; }
+            if (left) { setTimeout(poll, 20); } else { resolve(); }
         };
         poll();
     })""")
-    page.wait_for_timeout(300)
 
 
 def test_unacknowledged_alarm_row_really_flashes(page, server):
@@ -250,6 +251,7 @@ def test_phone_layout_is_readable_and_fits(browser, server):
 def test_faceplate_says_why_the_pump_is_held_off(page, server):
     page.click("#btn-manual")
     page.click("#btn-start")
+    page.wait_for_function("state.manual_run")  # nothing scans here unless the test steps
     process = server.sim.process
     process.volume_l = process.capacity_l * 0.97
     server.sim.step(1)
