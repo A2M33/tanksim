@@ -268,3 +268,13 @@ def test_simulator_explains_a_fault_the_plc_cannot_see_yet(page):
 def test_paused_plant_says_so_in_the_header(page):
     page.click("#btn-pause")
     page.wait_for_function("document.getElementById('clock').textContent.endsWith('paused')")
+
+
+def test_no_state_is_claimed_before_data_arrives(browser, server):
+    page = browser.new_page()
+    page.route("**/api/stream", lambda route: None)  # the stream never answers
+    page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+    page.wait_for_timeout(300)
+    assert page.text_content("#alarm-summary") == "No data yet"
+    assert page.text_content("#fp-state") == "--"
+    page.close()

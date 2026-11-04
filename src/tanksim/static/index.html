@@ -14,7 +14,7 @@
     <span class="sub">Fill pump P-101, level transmitter LT-101</span>
   </div>
   <div class="clock" id="clock" role="timer" aria-label="Plant time">--:--</div>
-  <button class="alarm-summary" id="alarm-summary" type="button" aria-live="polite">No alarms</button>
+  <button class="alarm-summary" id="alarm-summary" type="button" aria-live="polite">No data yet</button>
 </header>
 
 <p class="demo-note" id="demo-note" role="status" hidden></p>
@@ -36,7 +36,7 @@
       <!-- suction and discharge piping -->
       <path id="pipe-in" class="pipe" d="M144 366 H184 M228 366 H270 V40 H440 V62"/>
       <text class="tag" x="258" y="190" text-anchor="end">FT-101</text>
-      <text class="value" id="v-inflow" x="258" y="212" text-anchor="end">0.0 L/min</text>
+      <text class="value" id="v-inflow" x="258" y="212" text-anchor="end">--.- L/min</text>
 
       <!-- pump -->
       <g id="pump" class="pump">
@@ -44,7 +44,7 @@
         <path d="M196 352 L226 366 L196 380 Z"/>
       </g>
       <text class="tag" x="206" y="318" text-anchor="middle">P-101</text>
-      <text class="state" id="v-pump" x="206" y="408" text-anchor="middle">Stopped</text>
+      <text class="state" id="v-pump" x="206" y="408" text-anchor="middle">--</text>
       <text class="note" id="v-delay" x="206" y="426" text-anchor="middle"></text>
 
       <!-- tank -->
@@ -67,23 +67,23 @@
 
       <!-- outlet -->
       <path id="pipe-out" class="pipe" d="M520 344 H640"/>
-      <text class="tag" x="560" y="300">FT-102</text>
-      <text class="value" id="v-outflow" x="560" y="322">0.0 L/min</text>
-      <text class="label" x="640" y="370" text-anchor="end">To consumers</text>
+      <text class="tag" id="t-outflow" x="560" y="300">FT-102</text>
+      <text class="value" id="v-outflow" x="560" y="322">--.- L/min</text>
+      <text class="label" id="t-consumers" x="640" y="370" text-anchor="end">To consumers</text>
       <text class="note alarm-text" id="v-overflow" x="440" y="392" text-anchor="middle"></text>
     </svg>
     <!-- on a phone the drawing is too small for numbers, so they move here -->
     <dl class="readouts">
       <div><dt>LT-101 level</dt><dd class="big-value" id="m-level">--.- %</dd></div>
       <div><dt>Volume</dt><dd id="m-volume">---- L</dd></div>
-      <div><dt>FT-101 inflow</dt><dd id="m-inflow">0.0 L/min</dd></div>
-      <div><dt>FT-102 outflow</dt><dd id="m-outflow">0.0 L/min</dd></div>
+      <div><dt>FT-101 inflow</dt><dd id="m-inflow">--.- L/min</dd></div>
+      <div><dt>FT-102 outflow</dt><dd id="m-outflow">--.- L/min</dd></div>
     </dl>
   </section>
 
   <section class="panel faceplate" aria-labelledby="fp-title">
     <h2 id="fp-title">Pump P-101</h2>
-    <p class="pump-state" id="fp-state">Stopped</p>
+    <p class="pump-state" id="fp-state">--</p>
 
     <div class="field">
       <span class="field-name" id="mode-label">Mode</span>
@@ -103,8 +103,8 @@
     <p class="hint" id="cmd-hint">In auto the PLC starts the pump at the start level and stops it at the stop level.</p>
 
     <dl class="counters">
-      <div><dt>Starts</dt><dd id="v-starts">0</dd></div>
-      <div><dt>Run time</dt><dd id="v-runtime">0 h 00 min</dd></div>
+      <div><dt>Starts</dt><dd id="v-starts">--</dd></div>
+      <div><dt>Run time</dt><dd id="v-runtime">--</dd></div>
     </dl>
 
     <div class="actions">
@@ -126,7 +126,11 @@
   <section class="panel trend" aria-labelledby="trend-title">
     <h2 id="trend-title">Level, last 2 hours</h2>
     <canvas id="trend" height="220" role="img" aria-label="Level trend"></canvas>
-    <p class="legend"><span class="key key-level"></span>Level <span class="key key-band"></span>Start and stop <span class="key key-pump"></span>Pump running</p>
+    <p class="legend">
+      <span><span class="key key-level"></span>Level</span>
+      <span><span class="key key-band"></span>Start and stop</span>
+      <span><span class="key key-pump"></span>Pump running</span>
+    </p>
   </section>
 
   <section class="panel alarms" aria-labelledby="alarms-title">

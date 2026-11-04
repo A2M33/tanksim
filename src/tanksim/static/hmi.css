@@ -143,7 +143,7 @@ button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); 
 .sp-grid input.pending { border: 2px solid var(--ink); padding: 3px 5px; font-weight: 600; }
 .sp-grid input[aria-invalid="true"] { border-color: var(--alarm-high); }
 .sp-live { color: var(--muted); font-size: 13px; }
-.sp-message { color: var(--muted); min-height: 2.8em; margin: 8px 0; font-size: 13px; }
+.sp-message { color: var(--muted); min-height: 1.4em; margin: 8px 0; font-size: 13px; }
 .sp-message.error { color: var(--alarm-high); font-weight: 600; }
 
 .readouts { display: none; }
@@ -220,7 +220,10 @@ input[type="range"] { width: 100%; accent-color: var(--ink); }
   #mimic .state { font-size: 24px; }
   #mimic .note { font-size: 20px; }
   #mimic .scale text, #mimic .sp-mark text { font-size: 19px; }
-  #v-delay { transform: translateY(2px); }
+  #t-consumers { transform: translateY(28px); }
+  #t-outflow { transform: translateX(14px); }
+  #v-overflow { transform: translateX(-60px); }
+  .sp-message { min-height: 2.8em; }
   .readouts {
     display: grid;
     grid-template-columns: 1fr 1fr;
