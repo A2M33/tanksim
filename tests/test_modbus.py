@@ -1,6 +1,9 @@
+import socket
 import struct
 
 import pytest
+
+from tanksim import modbus
 
 from tanksim.modbus import ModbusClient, ModbusServer, handle_pdu, pack_bits, unpack_bits
 from tanksim.process import Process
@@ -96,6 +99,36 @@ def test_acknowledge_coil(client, sim):
 def test_single_coil_needs_ff00_or_0000(sim):
     reply = handle_pdu(sim, struct.pack(">BHH", 0x05, 0, 0x1234))
     assert reply == bytes([0x85, ModbusError.ILLEGAL_VALUE])
+
+
+def test_unexpected_failure_is_exception_4(capsys):
+    class Broken:
+        def read_coils(self, address, count):
+            raise RuntimeError("boom")
+
+    reply = handle_pdu(Broken(), struct.pack(">BHH", 0x01, 0, 1))
+    assert reply == bytes([0x81, ModbusError.SERVER_FAILURE])
+    assert "boom" in capsys.readouterr().err
+
+
+def test_half_a_frame_times_out_but_an_idle_client_stays(sim, monkeypatch):
+    monkeypatch.setattr(modbus, "FRAME_TIMEOUT_S", 0.2)
+    server = ModbusServer(sim, port=0)
+    server.start()
+    port = server.server_address[1]
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=3) as half:
+            half.sendall(bytes([0, 1, 0, 0, 0]))  # 5 of 7 header bytes
+            assert half.recv(10) == b""  # dropped by the server
+        with ModbusClient(port=port) as idle:
+            assert idle.read_coils(0, 1) == [True]
+            with pytest.raises(TimeoutError):
+                idle._sock.settimeout(0.5)
+                idle._sock.recv(1)  # no hang-up after the frame timeout
+            assert idle.read_coils(0, 1) == [True]
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def test_truncated_request(sim):

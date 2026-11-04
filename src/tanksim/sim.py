@@ -23,9 +23,10 @@ class ModbusError(Exception):
     ILLEGAL_FUNCTION = 1
     ILLEGAL_ADDRESS = 2
     ILLEGAL_VALUE = 3
+    SERVER_FAILURE = 4
 
     def __init__(self, code: int) -> None:
-        super().__init__(code)
+        super().__init__(f"Modbus exception code {code}")
         self.code = code
 
 

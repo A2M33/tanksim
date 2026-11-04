@@ -12,6 +12,7 @@ import socket
 import socketserver
 import struct
 import threading
+import traceback
 
 from .sim import ModbusError
 
@@ -29,6 +30,8 @@ MAX_READ_REGISTERS = 125
 MAX_WRITE_BITS = 1968
 MAX_WRITE_REGISTERS = 123
 
+FRAME_TIMEOUT_S = 5.0  # a frame that has started must arrive; idle clients may stay
+
 
 def pack_bits(bits: list[bool]) -> bytes:
     out = bytearray((len(bits) + 7) // 8)
@@ -43,9 +46,8 @@ def unpack_bits(data: bytes, count: int) -> list[bool]:
 
 
 def handle_pdu(store, pdu: bytes) -> bytes:
-    """Run one request PDU against the data store and return the response PDU."""
-    if not pdu:
-        raise ModbusError(ModbusError.ILLEGAL_FUNCTION)
+    """Run one request PDU (at least the function code) against the data store
+    and return the response PDU."""
     fc = pdu[0]
     try:
         return _dispatch(store, fc, pdu[1:])
@@ -53,6 +55,9 @@ def handle_pdu(store, pdu: bytes) -> bytes:
         return bytes([fc | 0x80, err.code])
     except struct.error:
         return bytes([fc | 0x80, ModbusError.ILLEGAL_VALUE])
+    except Exception:
+        traceback.print_exc()
+        return bytes([fc | 0x80, ModbusError.SERVER_FAILURE])
 
 
 def _dispatch(store, fc: int, data: bytes) -> bytes:
@@ -121,7 +126,10 @@ class _Handler(socketserver.BaseRequestHandler):
         sock: socket.socket = self.request
         while True:
             try:
-                header = _recv_exact(sock, 7)
+                sock.settimeout(None)
+                first = _recv_exact(sock, 1)
+                sock.settimeout(FRAME_TIMEOUT_S)
+                header = first + _recv_exact(sock, 6)
                 tid, proto, length, unit = struct.unpack(">HHHB", header)
                 if proto != 0 or not 2 <= length <= 254:
                     return  # not Modbus; drop the connection
