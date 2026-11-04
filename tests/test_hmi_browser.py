@@ -84,7 +84,9 @@ def test_unacknowledged_alarm_row_really_flashes(page, server):
         }
         return [...seen];
     }""", cell)
-    assert len(colours) == 2  # plain and alarm colour, on the same element
+    # A rebuilt row would leave this cell detached, with an empty computed style.
+    assert cell.evaluate("(c) => c.isConnected")
+    assert len(colours) == 2 and "" not in colours  # plain and alarm colour
 
 
 def test_controls_stay_locked_until_data_arrives(browser, server):
