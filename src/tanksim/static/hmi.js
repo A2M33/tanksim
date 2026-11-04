@@ -100,18 +100,35 @@ async function send(cmd, extra = {}) {
   if (demo) {
     const error = demo.command(JSON.stringify({ cmd, ...extra }));
     if (error) throw new Error(error);
-    if (state) render(JSON.parse(demo.snapshot()));
+    render(JSON.parse(demo.snapshot()));
     return;
   }
   const res = await fetch("api/command", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ cmd, ...extra }),
-  });
+  }).catch(() => { throw new Error("No connection to tanksim"); });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body.error);
   }
+}
+
+// A button press: the operator sees why it failed, for example when another
+// client switched the pump back to auto a moment ago.
+function act(cmd, extra) {
+  if (!state) return;
+  const notice = $("cmd-error");
+  send(cmd, extra).then(
+    () => { notice.hidden = true; },
+    (err) => { notice.textContent = err.message; notice.hidden = false; },
+  );
+}
+
+// Controls stay locked until live data arrives and while the link is down.
+function setLive(live) {
+  document.body.classList.toggle("waiting", !live);
+  for (const el of document.querySelectorAll("main, .sim")) el.inert = !live;
 }
 
 // ---- static parts ----------------------------------------------------
@@ -149,7 +166,7 @@ function buildSpeeds() {
     b.textContent = s + "×";
     b.dataset.speed = s;
     b.setAttribute("aria-label", s + " times");
-    b.addEventListener("click", () => send("speed", { value: s }));
+    b.addEventListener("click", () => act("speed", { value: s }));
     box.append(b);
   }
 }
@@ -335,6 +352,7 @@ function drawTrend() {
 }
 
 function render(s) {
+  if (!state) setLive(true);
   state = s;
   $("clock").textContent = hhmm(s.minute);
   const last = history[history.length - 1];
@@ -352,21 +370,21 @@ function render(s) {
 // ---- wiring ----------------------------------------------------------
 
 function wire() {
-  $("btn-auto").addEventListener("click", () => send("auto", { value: true }));
-  $("btn-manual").addEventListener("click", () => send("auto", { value: false }));
-  $("btn-start").addEventListener("click", () => send("manual_run", { value: true }));
-  $("btn-stop").addEventListener("click", () => send("manual_run", { value: false }));
-  $("btn-ack").addEventListener("click", () => send("ack"));
-  $("btn-reset").addEventListener("click", () => send("reset"));
+  $("btn-auto").addEventListener("click", () => act("auto", { value: true }));
+  $("btn-manual").addEventListener("click", () => act("auto", { value: false }));
+  $("btn-start").addEventListener("click", () => act("manual_run", { value: true }));
+  $("btn-stop").addEventListener("click", () => act("manual_run", { value: false }));
+  $("btn-ack").addEventListener("click", () => act("ack"));
+  $("btn-reset").addEventListener("click", () => act("reset"));
   $("alarm-summary").addEventListener("click", () => $("alarms-title").scrollIntoView({ behavior: "smooth" }));
-  $("btn-pause").addEventListener("click", () => send("pause", { value: !state.sim.paused }));
+  $("btn-pause").addEventListener("click", () => act("pause", { value: $("btn-pause").getAttribute("aria-pressed") !== "true" }));
 
   const slider = $("demand");
   slider.addEventListener("input", () => { $("demand-out").textContent = slider.value + " %"; });
-  slider.addEventListener("change", () => send("demand", { value: Number(slider.value) }));
+  slider.addEventListener("change", () => act("demand", { value: Number(slider.value) }));
 
   for (const b of document.querySelectorAll("[data-fault]")) {
-    b.addEventListener("click", () => send("fault", { name: b.dataset.fault, value: b.getAttribute("aria-pressed") !== "true" }));
+    b.addEventListener("click", () => act("fault", { name: b.dataset.fault, value: b.getAttribute("aria-pressed") !== "true" }));
   }
 
   $("sp-form").addEventListener("submit", async (e) => {
@@ -399,10 +417,16 @@ async function start() {
     history = await res.json();
     const stream = new EventSource("api/stream");
     stream.onmessage = (e) => {
-      $("link-lost").hidden = true;
+      if (!$("link-lost").hidden) {
+        $("link-lost").hidden = true;
+        setLive(true);
+      }
       render(JSON.parse(e.data));
     };
-    stream.onerror = () => { $("link-lost").hidden = false; };
+    stream.onerror = () => {
+      $("link-lost").hidden = false;
+      setLive(false);
+    };
   } else {
     await startDemo();
   }
@@ -413,7 +437,7 @@ async function start() {
 async function startDemo() {
   const note = $("demo-note");
   note.hidden = false;
-  note.textContent = "Loading the simulator into your browser…";
+  note.textContent = "Loading the simulator into your browser. This takes a few seconds…";
   try {
     await new Promise((resolve, reject) => {
       const script = document.createElement("script");
@@ -425,8 +449,9 @@ async function startDemo() {
     const py = await loadPyodide({ indexURL: PYODIDE });
     py.FS.mkdirTree("/home/pyodide/tanksim");
     for (const name of DEMO_MODULES) {
-      const source = await (await fetch(`py/tanksim/${name}.py`)).text();
-      py.FS.writeFile(`/home/pyodide/tanksim/${name}.py`, source);
+      const res = await fetch(`py/tanksim/${name}.py`);
+      if (!res.ok) throw new Error(`Could not load ${name}.py`);
+      py.FS.writeFile(`/home/pyodide/tanksim/${name}.py`, await res.text());
     }
     const ns = py.globals.get("dict")();
     py.runPython(DEMO_GLUE, { globals: ns });

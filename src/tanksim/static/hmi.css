@@ -70,11 +70,14 @@ button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); 
 }
 .demo-note a { color: var(--focus); }
 
-.link-lost {
+.notice {
   padding: 8px 20px;
   background: var(--ink);
   color: #fff;
 }
+
+/* no live data yet, or the link dropped: nothing here can be trusted or used */
+.waiting .grid, .waiting .sim { opacity: 0.55; }
 
 /* layout */
 .grid {

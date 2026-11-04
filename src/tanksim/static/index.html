@@ -7,7 +7,7 @@
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="hmi.css">
 </head>
-<body>
+<body class="waiting">
 <header class="bar">
   <div class="plant">
     <h1>T-101 Elevated tank</h1>
@@ -18,9 +18,10 @@
 </header>
 
 <p class="demo-note" id="demo-note" role="status" hidden></p>
-<div class="link-lost" id="link-lost" hidden>Connection to tanksim lost. Retrying…</div>
+<div class="notice" id="link-lost" hidden>Connection to tanksim lost. Values are out of date. Retrying…</div>
+<div class="notice" id="cmd-error" role="alert" hidden></div>
 
-<main class="grid">
+<main class="grid" inert>
   <section class="panel process" aria-label="Process graphic">
     <svg id="mimic" viewBox="0 0 660 430" role="img" aria-label="Pump P-101 fills tank T-101, which supplies the consumers">
       <defs>
@@ -130,7 +131,7 @@
   </section>
 </main>
 
-<section class="sim" aria-labelledby="sim-title">
+<section class="sim" aria-labelledby="sim-title" inert>
   <h2 id="sim-title">Simulator</h2>
   <p class="sim-note">Outside the plant. A real operator cannot do these things; use them to test how the PLC reacts.</p>
   <div class="sim-grid">

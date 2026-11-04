@@ -84,3 +84,44 @@ def test_unacknowledged_alarm_row_really_flashes(page, server):
         return [...seen];
     }""", cell)
     assert len(colours) == 2  # plain and alarm colour, on the same element
+
+
+def test_controls_stay_locked_until_data_arrives(browser, server):
+    page = browser.new_page()
+    page.route("**/api/stream", lambda route: None)  # the stream never answers
+    posts = []
+    page.on("request", lambda r: r.method == "POST" and posts.append(r.url))
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.goto(f"http://127.0.0.1:{server.server_address[1]}/")
+    page.wait_for_timeout(300)
+    assert page.evaluate("document.querySelector('main').inert")
+    page.locator("#btn-pause").dispatch_event("click")
+    page.locator("#btn-manual").dispatch_event("click")
+    page.wait_for_timeout(200)
+    assert posts == [] and errors == []
+    page.close()
+
+
+def test_refused_command_is_shown_to_the_operator(page):
+    page.route("**/api/command", lambda route: route.fulfill(
+        status=400, content_type="application/json",
+        body=json.dumps({"error": "Switch the pump to manual first"}),
+    ))
+    page.click("#btn-manual")
+    page.wait_for_selector("#cmd-error:not([hidden])")
+    assert page.text_content("#cmd-error") == "Switch the pump to manual first"
+    page.errors.clear()  # the browser itself logs the 400
+    page.unroute("**/api/command")
+    page.click("#btn-manual")
+    page.wait_for_selector("#cmd-error", state="hidden")
+
+
+def test_link_loss_locks_the_controls_until_the_stream_is_back(page, server):
+    server.stopping.set()  # the stream handler hangs up on every reconnect
+    page.wait_for_selector("#link-lost:not([hidden])")
+    assert page.evaluate("document.querySelector('main').inert")
+    server.stopping.clear()
+    page.wait_for_selector("#link-lost", state="hidden", timeout=15000)
+    assert not page.evaluate("document.querySelector('main').inert")
+    page.errors[:] = [e for e in page.errors if "api/stream" not in e and "ERR_" not in e]
