@@ -28,11 +28,11 @@ $ tanksim poll
 
 ## Things to try
 
-- **Break the pump** in the simulator panel. The PLC waits 5 seconds for the running signal, then latches a pump fault and raises an alarm. Press Reset faults to clear it.
+- **Break the pump** in the simulator panel while it runs. The PLC waits 5 seconds for the running signal, then latches a pump fault and raises an alarm. Press Reset faults to clear it. Break a stopped pump and the PLC finds out at the next start.
 - **Freeze the level sensor.** A live transmitter never sends the same value twice in a row for long. After 2 minutes of identical readings the PLC calls it a sensor fault and stops the pump in auto, because it can no longer trust the level.
-- **Switch to manual and run the pump** until the tank passes 95 %. The high high interlock stops it anyway.
+- **Switch to manual and run the pump** until the tank passes 95 %. The high high interlock stops it anyway, and it stays off until you press Start again.
 - **Stop the pump and start it again** at once. The PLC holds a 60 second restart delay so the motor does not overheat from short cycling.
-- **Set the start level above the stop level.** The HMI refuses, and so does the Modbus server (exception code 3).
+- **Set the start level above the stop level.** The HMI names the two setpoints in conflict and keeps your entry next to the value the PLC still uses. The Modbus server refuses too, with exception code 3.
 
 ## How the PLC decides
 
@@ -42,11 +42,11 @@ The program in [`plc.py`](src/tanksim/plc.py) runs once per scan, like the main 
 | --- | --- |
 | Level falls to the start level (20 %) | Starts the pump (auto) |
 | Level reaches the stop level (80 %) | Stops the pump (auto) |
-| Level at or above high high (95 %) | Stops the pump in auto and manual |
+| Level at or above high high (95 %) | Stops the pump in auto and manual; in manual you start it again yourself |
 | Pump feedback differs from the command for 5 s | Latches a pump fault, stops the pump |
 | Level reading frozen for 2 min or outside -2 to 102 % | Latches a sensor fault, stops the pump in auto |
 | Pump stopped less than 60 s ago | Holds off the next start |
-| Switch from auto to manual | Keeps the pump as it is (bumpless) |
+| Switch between auto and manual | Keeps the pump as it is (bumpless) |
 
 Alarms follow ISA-18.2. An alarm arrives unacknowledged and flashes. It leaves the list once it has cleared and you have acknowledged it. Level alarms have a 1 % deadband so sensor noise cannot make them chatter.
 
@@ -131,7 +131,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
+The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. With Playwright installed they also drive the HMI in a browser; without it pytest skips those. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
 
 ## License
 
