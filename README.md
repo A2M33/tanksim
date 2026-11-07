@@ -105,7 +105,7 @@ The setpoints must rise from address 0 to 5. To move several at once, write them
 
 ## Connect other tools
 
-Point any Modbus TCP client at `127.0.0.1`, port `5020`. I tested with the built-in `tanksim poll`. To reach tanksim from another machine, start it with `--host 0.0.0.0`.
+Point any Modbus TCP client at `127.0.0.1`, port `5020`. I tested with the built-in `tanksim poll`. To reach tanksim from another machine, start it with `--host 0.0.0.0` and open the HMI by the machine's IP address or name. The HMI server refuses commands that come from a page on another website or arrive under a host name it does not know, so a site you visit cannot work the pump through your browser.
 
 From Python, without extra packages:
 

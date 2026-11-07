@@ -274,6 +274,27 @@ def test_paused_plant_says_so_in_the_header(page):
     page.wait_for_function("document.getElementById('clock').textContent.endsWith('paused')")
 
 
+def test_another_site_cannot_send_commands(browser, server):
+    # A page from another port is another origin. It has to be a real local
+    # server: the browser blocks requests from a faked page to localhost by
+    # itself, and the test would pass without the server's check.
+    other = HmiServer(Simulator(Process(seed=2)), port=0)
+    other.start()
+    page = browser.new_page()
+    try:
+        page.goto(f"http://127.0.0.1:{other.server_address[1]}/api/state")
+        # A simple request needs no CORS preflight, so the browser sends it as is.
+        page.evaluate("""(url) => fetch(url, {
+            method: "POST", mode: "no-cors", body: '{"cmd": "pause", "value": true}',
+        })""", f"http://127.0.0.1:{server.server_address[1]}/api/command")
+        page.wait_for_timeout(300)
+        assert not server.sim.paused
+    finally:
+        page.close()
+        other.shutdown()
+        other.server_close()
+
+
 def test_no_state_is_claimed_before_data_arrives(browser, server):
     page = browser.new_page()
     page.route("**/api/stream", lambda route: None)  # the stream never answers

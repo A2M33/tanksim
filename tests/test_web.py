@@ -121,8 +121,59 @@ def test_demand_must_be_a_number(server):
 def raw_post(srv, head, body=b""):
     """Send a hand-made request and return the status line."""
     with socket.create_connection(("127.0.0.1", srv.server_address[1]), timeout=3) as s:
-        s.sendall(b"POST /api/command HTTP/1.1\r\nHost: x\r\n" + head + b"\r\n\r\n" + body)
+        s.sendall(b"POST /api/command HTTP/1.1\r\nHost: 127.0.0.1\r\n" + head + b"\r\n\r\n" + body)
         return s.recv(200).split(b"\r\n")[0]
+
+
+def command_with_headers(srv, headers):
+    """POST a pause with the given headers; urllib adds a Host unless one is given."""
+    req = urllib.request.Request(
+        url(srv, "/api/command"), data=b'{"cmd": "pause", "value": true}', headers=headers
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=3) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as err:
+        return err.code, json.loads(err.read())
+
+
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Origin": "http://evil.example"},  # CSRF from another site
+        {"Origin": "http://127.0.0.1:1"},  # another local page on another port
+        {"Origin": "null"},  # sandboxed frame or file:// page
+        {"Origin": "https://127.0.0.1:{port}"},
+        {"Host": "evil.example:{port}", "Origin": "http://evil.example:{port}"},  # DNS rebinding
+        {"Host": "evil.example:{port}"},
+        {"Host": "localhost.evil.example:{port}"},
+        {"Host": "127.0.0.1:notaport"},
+    ],
+    ids=["other-site", "other-port", "null", "https", "rebinding", "rebinding-no-origin",
+         "lookalike", "bad-port"],
+)
+def test_commands_from_other_sites_are_refused(server, headers):
+    port = server.server_address[1]
+    headers = {k: v.format(port=port) for k, v in headers.items()}
+    status, body = command_with_headers(server, headers)
+    assert status == 403 and body["error"]
+    assert not server.sim.paused
+
+
+@pytest.mark.parametrize(
+    "host",
+    ["127.0.0.1:{port}", "localhost:{port}", "LOCALHOST:{port}", "[::1]:{port}",
+     "192.168.1.20:{port}", "{machine}:{port}", "tanksim.localhost:{port}"],
+)
+def test_commands_from_the_hmi_page_pass(server, host):
+    port = server.server_address[1]
+    host = host.format(port=port, machine=socket.gethostname())
+    status, _ = command_with_headers(server, {"Host": host, "Origin": f"http://{host}"})
+    assert status == 200 and server.sim.paused
+
+
+def test_two_host_headers_are_refused(server):
+    assert b" 403 " in raw_post(server, b"Host: evil.example\r\nContent-Length: 0")
 
 
 @pytest.mark.parametrize(
