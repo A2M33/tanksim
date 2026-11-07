@@ -17,6 +17,14 @@ def _is_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _switch(value) -> bool:
+    # bool("false") is True and a missing value would read as False, so a
+    # switch takes JSON true or false and nothing else.
+    if not isinstance(value, bool):
+        raise CommandError("Value must be true or false")
+    return value
+
+
 def _apply_setpoints(sim: Simulator, value) -> None:
     if not isinstance(value, dict):
         raise CommandError("Setpoints must be an object of names and numbers")
@@ -37,11 +45,12 @@ def apply_command(sim: Simulator, body: dict) -> None:
     plc, p = sim.plc, sim.process
     with sim.lock:
         if cmd == "auto":
-            plc.set_auto(bool(value))
+            plc.set_auto(_switch(value))
         elif cmd == "manual_run":
+            run = _switch(value)
             if plc.auto:
                 raise CommandError("Switch the pump to manual first")
-            plc.set_manual_run(bool(value))
+            plc.set_manual_run(run)
         elif cmd == "ack":
             plc.acknowledge()
         elif cmd == "reset":
@@ -49,24 +58,25 @@ def apply_command(sim: Simulator, body: dict) -> None:
         elif cmd == "setpoints":
             _apply_setpoints(sim, value)
         elif cmd == "speed":
-            if value not in SPEEDS:
+            if not _is_number(value) or value not in SPEEDS:  # True == 1 in Python
                 raise CommandError(f"Speed must be one of {SPEEDS}")
             sim.speed = float(value)
         elif cmd == "pause":
-            sim.paused = bool(value)
+            sim.paused = _switch(value)
         elif cmd == "demand":
             if not _is_number(value) or not 0 <= value <= 300:
                 raise CommandError("Demand must be between 0 and 300 %")
             p.demand_scale = value / 100
         elif cmd == "fault":
             name = body.get("name")
-            if name == "pump":
-                p.pump_broken = bool(value)
-            elif name == "sensor":
-                p.sensor_stuck = bool(value)
-            elif name == "leak":
-                p.leak_lpm = 40.0 if value else 0.0
-            else:
+            if name not in ("pump", "sensor", "leak"):
                 raise CommandError("Fault must be pump, sensor or leak")
+            on = _switch(value)
+            if name == "pump":
+                p.pump_broken = on
+            elif name == "sensor":
+                p.sensor_stuck = on
+            else:
+                p.leak_lpm = 40.0 if on else 0.0
         else:
             raise CommandError(f"Unknown command {cmd!r}")

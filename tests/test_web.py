@@ -94,6 +94,25 @@ def test_malformed_setpoints_get_a_readable_error(server, value, error):
     assert server.sim.plc.setpoints["start"] == 20
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"cmd": "auto"},
+        {"cmd": "auto", "value": "false"},
+        {"cmd": "pause", "value": 1},
+        {"cmd": "fault", "name": "pump", "value": "yes"},
+        {"cmd": "speed", "value": True},
+    ],
+    ids=["missing", "string", "number", "fault-string", "speed-bool"],
+)
+def test_switches_take_true_or_false_only(server, body):
+    status, reply = post(server, body)
+    assert status == 400 and reply["error"]
+    sim = server.sim
+    assert sim.plc.auto and not sim.paused and not sim.process.pump_broken
+    assert sim.speed == 20
+
+
 def test_demand_must_be_a_number(server):
     assert post(server, {"cmd": "demand", "value": True})[0] == 400
     assert server.sim.process.demand_scale == 1
