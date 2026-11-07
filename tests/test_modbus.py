@@ -218,4 +218,7 @@ def test_bad_quantity_or_byte_count_is_exception_3(raw, sim, pdu):
 )
 def test_frame_that_is_not_modbus_drops_the_connection(raw, data):
     raw.sendall(data)
-    assert raw.recv(10) == b""
+    try:
+        assert raw.recv(10) == b""
+    except ConnectionResetError:
+        pass  # macOS resets when the server closes with bytes still unread; dropped all the same
