@@ -154,3 +154,68 @@ def test_client_refuses_a_malformed_reply(pdu):
 
 def test_truncated_request(sim):
     assert handle_pdu(sim, bytes([0x03, 0x00])) == bytes([0x83, ModbusError.ILLEGAL_VALUE])
+
+
+@pytest.fixture
+def raw(sim):
+    """A plain socket to the server, for frames no well-behaved client sends."""
+    server = ModbusServer(sim, port=0)
+    server.start()
+    sock = socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=3)
+    yield sock
+    sock.close()
+    server.shutdown()
+    server.server_close()
+
+
+def frame(pdu, tid=7, unit=0x11, proto=0, length=None):
+    return struct.pack(">HHHB", tid, proto, len(pdu) + 1 if length is None else length, unit) + pdu
+
+
+def reply(sock):
+    head = modbus._recv_exact(sock, 7)
+    tid, proto, length, unit = struct.unpack(">HHHB", head)
+    return tid, proto, unit, modbus._recv_exact(sock, length - 1)
+
+
+def test_reply_echoes_transaction_and_unit_id(raw):
+    raw.sendall(frame(struct.pack(">BHH", 0x03, 0, 1), tid=0xBEEF, unit=0xFF))
+    assert reply(raw) == (0xBEEF, 0, 0xFF, bytes([0x03, 2, 0, 50]))
+
+
+def test_two_frames_in_one_packet_get_two_replies(raw):
+    raw.sendall(frame(struct.pack(">BHH", 0x01, 0, 1), tid=1) + frame(struct.pack(">BHH", 0x04, 99, 1), tid=2))
+    assert reply(raw) == (1, 0, 0x11, bytes([0x01, 1, 1]))
+    assert reply(raw) == (2, 0, 0x11, bytes([0x84, ModbusError.ILLEGAL_ADDRESS]))
+
+
+@pytest.mark.parametrize(
+    "pdu",
+    [
+        struct.pack(">BHH", 0x03, 0, 0),  # no registers
+        struct.pack(">BHH", 0x03, 0, 126),  # one more than a reply can hold
+        struct.pack(">BHH", 0x01, 0, 2001),
+        struct.pack(">BHHB", 0x0F, 0, 4, 2) + b"\x00\x00",  # byte count does not fit 4 coils
+        struct.pack(">BHHB", 0x10, 2, 2, 2) + b"\x01\x2c",  # byte count says 1 register
+        struct.pack(">BHHB", 0x10, 2, 2, 4) + b"\x01\x2c",  # data shorter than byte count
+    ],
+    ids=["count-0", "count-126", "bits-2001", "fc15-bytes", "fc16-bytes", "fc16-short"],
+)
+def test_bad_quantity_or_byte_count_is_exception_3(raw, sim, pdu):
+    raw.sendall(frame(pdu))
+    assert reply(raw)[3] == bytes([pdu[0] | 0x80, ModbusError.ILLEGAL_VALUE])
+    assert sim.plc.setpoints["start"] == 20
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        frame(b"\x03\x00\x00\x00\x01", proto=1),  # not Modbus
+        frame(b"", length=1),  # unit id but no function code
+        frame(b"\x03", length=255),  # longer than any Modbus frame
+    ],
+    ids=["protocol-1", "no-function", "too-long"],
+)
+def test_frame_that_is_not_modbus_drops_the_connection(raw, data):
+    raw.sendall(data)
+    assert raw.recv(10) == b""

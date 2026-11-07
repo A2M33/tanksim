@@ -28,7 +28,8 @@ Homepage = "https://github.com/A2M33/tanksim"
 tanksim = "tanksim.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+# Test tools only. tanksim itself has no dependencies.
+dev = ["pytest>=8", "pymodbus>=3.9"]
 
 [tool.setuptools.dynamic]
 version = { attr = "tanksim.__version__" }

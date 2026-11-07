@@ -105,7 +105,7 @@ The setpoints must rise from address 0 to 5. To move several at once, write them
 
 ## Connect other tools
 
-Point any Modbus TCP client at `127.0.0.1`, port `5020`. I tested with the built-in `tanksim poll`. To reach tanksim from another machine, start it with `--host 0.0.0.0` and open the HMI by the machine's IP address or name. The HMI server refuses commands that come from a page on another website or arrive under a host name it does not know, so a site you visit cannot work the pump through your browser.
+Point any Modbus TCP client at `127.0.0.1`, port `5020`. Besides the built-in `tanksim poll`, the tests run [pymodbus](https://github.com/pymodbus-dev/pymodbus) against the server: every read and write function code, the exception codes and the connection surviving them. To reach tanksim from another machine, start it with `--host 0.0.0.0` and open the HMI by the machine's IP address or name. The HMI server refuses commands that come from a page on another website or arrive under a host name it does not know, so a site you visit cannot work the pump through your browser.
 
 From Python, without extra packages:
 
@@ -131,7 +131,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. With Playwright installed they also drive the HMI in a browser; without it pytest skips those. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
+The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `dev` extra brings pytest and pymodbus; tanksim itself still installs nothing else. With Playwright installed the tests also drive the HMI in a browser; without it pytest skips those. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
 
 ## License
 
