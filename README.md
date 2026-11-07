@@ -131,7 +131,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `dev` extra brings pytest and pymodbus; tanksim itself still installs nothing else. With Playwright installed the tests also drive the HMI in a browser; without it pytest skips those. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
+The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `dev` extra brings pytest and pymodbus; tanksim itself still installs nothing else. With Playwright installed the tests also drive the HMI in a browser; without it pytest skips those. CI runs every test, the browser ones included, on Linux, Windows and macOS. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
 
 ## License
 
