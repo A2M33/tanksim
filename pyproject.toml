@@ -35,7 +35,7 @@ dev = ["pytest>=8", "pymodbus>=3.9"]
 version = { attr = "tanksim.__version__" }
 
 [tool.setuptools.package-data]
-tanksim = ["static/*"]
+tanksim = ["static/*", "static/fonts/*", "static/icons/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

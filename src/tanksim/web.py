@@ -28,10 +28,17 @@ from urllib.parse import urlsplit
 from .commands import CommandError, apply_command
 from .sim import Simulator
 
+FONTS = [
+    "Barlow-Regular", "Barlow-Medium", "Barlow-SemiBold",
+    "BarlowSemiCondensed-Medium", "BarlowSemiCondensed-SemiBold",
+]
 STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),
+    "/tokens.css": ("tokens.css", "text/css; charset=utf-8"),
     "/hmi.css": ("hmi.css", "text/css; charset=utf-8"),
     "/hmi.js": ("hmi.js", "text/javascript; charset=utf-8"),
+    **{f"/fonts/{name}.woff2": (f"fonts/{name}.woff2", "font/woff2") for name in FONTS},
+    **{f"/icons/tanksim-{size}.png": (f"icons/tanksim-{size}.png", "image/png") for size in (16, 32, 180)},
 }
 STREAM_INTERVAL_S = 0.25
 MAX_BODY = 64 * 1024
@@ -61,7 +68,7 @@ class _Handler(BaseHTTPRequestHandler):
         sim = self.server.sim
         if path in STATIC:
             name, ctype = STATIC[path]
-            data = resources.files("tanksim").joinpath("static", name).read_bytes()
+            data = resources.files("tanksim").joinpath("static", *name.split("/")).read_bytes()
             self._send(200, data, ctype)
         elif path == "/api/state":
             self._json(200, sim.snapshot())

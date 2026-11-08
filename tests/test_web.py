@@ -45,7 +45,7 @@ def post(srv, body):
 
 
 def test_serves_hmi_files(server):
-    for path in ("/", "/hmi.css", "/hmi.js"):
+    for path in web.STATIC:
         status, body = get(server, path)
         assert status == 200 and body
 
