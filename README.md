@@ -4,7 +4,7 @@ A water tank, a fill pump and the PLC program that runs them. It speaks Modbus T
 
 **[Try the live demo ↗](https://a2m33.github.io/tanksim/)** It runs the same Python code in your browser through Pyodide, so you can break the pump and watch the PLC react without installing anything.
 
-![The pump starts at the start level and fills the tank. Then the pump breaks, the PLC latches a fault and the alarm banner turns red. After a reset the pump runs again.](docs/demo.gif)
+![The HMI in its light theme. The pump starts at the start level, its status lamp turns amber and the tank fills. Then the pump breaks: the lamp and the faceplate turn red, and a red alarm banner with a diamond for high priority appears. After a reset and an acknowledge the pump runs again.](docs/demo.gif)
 
 I wanted something to practise PLC logic and Modbus on without buying a PLC. tanksim runs on any computer with Python 3.10 or newer and needs no other packages.
 
@@ -50,9 +50,9 @@ The program in [`plc.py`](src/tanksim/plc.py) runs once per scan, like the main 
 
 Alarms follow ISA-18.2. An alarm arrives unacknowledged and flashes. It leaves the list once it has cleared and you have acknowledged it. Level alarms have a 1 % deadband so sensor noise cannot make them chatter.
 
-The HMI follows ISA-101: a grey screen, no colour for normal states, red and amber for alarms only. A running pump is filled dark and a stopped pump is hollow.
+The HMI follows ISA-101: a grey-green screen where colour means something. A running pump is filled dark and a stopped pump is hollow. Its status lamp is grey when stopped, amber when running and red on a fault. Red and amber otherwise mark alarms, and each alarm also shows its priority as a word and a shape (a diamond for high, a triangle for medium), so nobody has to tell the colours apart. The page follows your system's dark mode with a darker night-shift palette.
 
-![The full HMI with a pump fault: process graphic, pump faceplate, level trend, alarm list with event log, and the simulator panel](docs/hmi-fault.png)
+![The full HMI after the pump broke in manual mode: the pump symbol and its lamp are red, the faceplate reads "Fault, reset to restart", the header shows 1 alarm not acknowledged, and the alarm list has one high priority pump alarm above the event log. Below are the level trend and the simulator panel with "Break the pump" switched on.](docs/hmi-fault.png)
 
 ## Modbus register map
 
