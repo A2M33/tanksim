@@ -19,7 +19,7 @@ jobs:
           python-version: "3.13"
       - run: pip install -e ".[dev]" pyinstaller
       - run: pytest -q
-      - run: pyinstaller --onefile --name tanksim --paths src --add-data "src/tanksim/static;tanksim/static" packaging/entry.py
+      - run: pyinstaller --onefile --name tanksim --icon packaging/tanksim.ico --paths src --add-data "src/tanksim/static;tanksim/static" packaging/entry.py
       - run: dist\tanksim.exe --version
       - run: gh release upload ${{ github.event.release.tag_name }} dist/tanksim.exe --clobber
         env:
