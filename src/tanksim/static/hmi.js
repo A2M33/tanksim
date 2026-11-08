@@ -96,6 +96,14 @@ function svg(tag, attrs, text) {
 // Sensor noise around an empty tank must not read -0.0 % or -1 mm.
 const unsigned = (value) => Math.max(0, value);
 
+// The status lamp: grey when stopped, amber when running, red on a fault.
+function setLamp(id, s, fault) {
+  const lamp = $(id);
+  const lampState = fault ? "fault" : s.pump_running ? "live" : "";
+  if (lampState) lamp.dataset.state = lampState;
+  else delete lamp.dataset.state;
+}
+
 function levelY(pct) {
   return TANK_BOTTOM - Math.max(0, Math.min(100, pct)) * TANK_PX_PER_PCT;
 }
@@ -222,6 +230,7 @@ function renderMimic(s) {
   const fault = s.alarms.some((a) => a.tag === "PUMP" && a.active);
   pump.classList.toggle("running", s.pump_running);
   pump.classList.toggle("fault", fault);
+  setLamp("pump-lamp", s, fault);
   setText("v-pump", fault ? "Fault" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped");
   setText("v-delay", s.restart_delay > 0 && !s.pump_cmd ? `Restart in ${Math.ceil(s.restart_delay)} s` : "");
 
@@ -261,6 +270,7 @@ function renderFaceplate(s) {
   const fp = $("fp-state");
   setText("fp-state", fault ? "Fault, reset to restart" : s.pump_running ? "Running" : s.pump_cmd ? "Starting" : "Stopped");
   fp.classList.toggle("fault", fault);
+  setLamp("fp-lamp", s, fault);
 
   $("btn-auto").setAttribute("aria-pressed", s.auto);
   $("btn-manual").setAttribute("aria-pressed", !s.auto);
@@ -320,8 +330,15 @@ function renderAlarms(s) {
     const sorted = [...s.alarms].sort((a, b) => b.since - a.since);
     for (const a of sorted) {
       const tr = document.createElement("tr");
-      tr.className = [HIGH_PRIORITY.has(a.tag) ? "high" : "medium", a.acked ? "acked" : "unacked", a.active ? "active" : "cleared"].join(" ");
+      const high = HIGH_PRIORITY.has(a.tag);
+      tr.className = [high ? "high" : "medium", a.acked ? "acked" : "unacked", a.active ? "active" : "cleared"].join(" ");
       const stateText = a.active ? (a.acked ? "Active" : "Active, not acknowledged") : "Cleared, not acknowledged";
+      // Priority as a word and a shape, never as colour alone (ISA-18.2).
+      const priority = document.createElement("td");
+      const shape = document.createElement("span");
+      shape.className = "prio-shape";
+      priority.append(shape, high ? "High" : "Medium");
+      tr.append(priority);
       for (const [text, cls] of [[hhmmss(a.since)], [a.tag], [a.text], [stateText, "state-cell"]]) {
         const td = document.createElement("td");
         td.textContent = text;
@@ -385,16 +402,18 @@ function drawTrend() {
 
   const css = getComputedStyle(document.documentElement);
   const ink = css.getPropertyValue("--ink").trim();
-  const muted = css.getPropertyValue("--muted").trim();
+  const muted = css.getPropertyValue("--ink-2").trim();
+  const grid = css.getPropertyValue("--inset").trim();
+  const band = css.getPropertyValue("--line").trim();
   const left = 34, right = w - 8, top = 8, bottom = h - 22;
   const now = state.clock;
   const x = (t) => left + (right - left) * (1 - (now - t) / TREND_SPAN_S);
   const y = (pct) => bottom - (bottom - top) * pct / 100;
 
   ctx.save();
-  ctx.font = "11px " + css.getPropertyValue("--font");
+  ctx.font = "12px " + css.getPropertyValue("--font");
   ctx.fillStyle = muted;
-  ctx.strokeStyle = "#c3c8cc";
+  ctx.strokeStyle = grid;
   ctx.lineWidth = 1;
   for (let pct = 0; pct <= 100; pct += 25) {
     ctx.beginPath(); ctx.moveTo(left, y(pct)); ctx.lineTo(right, y(pct)); ctx.stroke();
@@ -403,7 +422,7 @@ function drawTrend() {
   const firstTick = Math.ceil((now - TREND_SPAN_S) / 1800) * 1800;
   for (let t = firstTick; t <= now; t += 1800) {
     ctx.beginPath(); ctx.moveTo(x(t), top); ctx.lineTo(x(t), bottom); ctx.stroke();
-    ctx.fillText(hhmm(t / 60), x(t) - 14, h - 6);
+    ctx.fillText(hhmm(t / 60), Math.min(x(t) - 14, w - 34), h - 6);
   }
 
   ctx.beginPath();
@@ -411,7 +430,7 @@ function drawTrend() {
   ctx.clip();
 
   // pump running band along the bottom
-  ctx.fillStyle = "#a3abb2";
+  ctx.fillStyle = band;
   for (let i = 1; i < history.length; i++) {
     if (history[i][2] > 1) ctx.fillRect(x(history[i - 1][0]), bottom - 8, x(history[i][0]) - x(history[i - 1][0]) + 0.5, 8);
   }

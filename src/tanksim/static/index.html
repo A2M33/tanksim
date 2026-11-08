@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>T-101 Elevated tank · tanksim</title>
-<link rel="icon" href="data:,">
+<meta name="theme-color" content="#e3e5e0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1b211e" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/tanksim-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/tanksim-16.png">
+<link rel="apple-touch-icon" href="icons/tanksim-180.png">
+<link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="hmi.css">
 </head>
 <body class="waiting">
@@ -44,6 +49,7 @@
         <path d="M196 352 L226 366 L196 380 Z"/>
       </g>
       <text class="tag" x="206" y="318" text-anchor="middle">P-101</text>
+      <circle id="pump-lamp" class="lamp-svg" cx="168" cy="313" r="6"/>
       <text class="state" id="v-pump" x="206" y="408" text-anchor="middle">--</text>
       <text class="note" id="v-delay" x="206" y="426" text-anchor="middle"></text>
 
@@ -83,7 +89,7 @@
 
   <section class="panel faceplate" aria-labelledby="fp-title">
     <h2 id="fp-title">Pump P-101</h2>
-    <p class="pump-state" id="fp-state">--</p>
+    <p class="pump-state"><span class="lamp" id="fp-lamp"></span> <span id="fp-state">--</span></p>
 
     <div class="field">
       <span class="field-name" id="mode-label">Mode</span>
@@ -136,7 +142,7 @@
   <section class="panel alarms" aria-labelledby="alarms-title">
     <h2 id="alarms-title">Alarms</h2>
     <table>
-      <thead><tr><th scope="col">Since</th><th scope="col">Tag</th><th scope="col">Message</th><th scope="col">State</th></tr></thead>
+      <thead><tr><th scope="col">Priority</th><th scope="col">Since</th><th scope="col">Tag</th><th scope="col">Message</th><th scope="col">State</th></tr></thead>
       <tbody id="alarm-rows"></tbody>
     </table>
     <p class="empty" id="alarm-empty">All quiet. New alarms appear here and stay until they clear and you acknowledge them.</p>
