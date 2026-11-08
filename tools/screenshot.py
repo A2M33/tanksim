@@ -12,15 +12,16 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 URL = "http://localhost:8080/"
+GREY_TEXT = ["--disable-lcd-text"]  # no coloured subpixel fringes on small grey labels
 
 
 def main(out: Path, warmup_s: float = 0) -> None:
     out.mkdir(parents=True, exist_ok=True)
     with sync_playwright() as p:
         try:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(headless=True, args=GREY_TEXT)
         except Exception:  # no bundled Chromium; Windows always has Edge
-            browser = p.chromium.launch(headless=True, channel="msedge")
+            browser = p.chromium.launch(headless=True, channel="msedge", args=GREY_TEXT)
         page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
         errors = []
         page.on("console", lambda m: m.type == "error" and errors.append(m.text))
