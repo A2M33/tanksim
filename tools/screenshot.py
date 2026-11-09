@@ -22,7 +22,7 @@ def main(out: Path, warmup_s: float = 0) -> None:
             browser = p.chromium.launch(headless=True, args=GREY_TEXT)
         except Exception:  # no bundled Chromium; Windows always has Edge
             browser = p.chromium.launch(headless=True, channel="msedge", args=GREY_TEXT)
-        page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1)
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=1, color_scheme="dark")
         errors = []
         page.on("console", lambda m: m.type == "error" and errors.append(m.text))
         page.on("pageerror", lambda e: errors.append(str(e)))

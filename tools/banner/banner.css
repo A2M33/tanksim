@@ -1,0 +1,22 @@
+/* A2M33 "trace" banner frame, 1280x640. Uses tokens.css variables only.
+   Left: name and one sentence. Right: the real artifact with traced callouts. */
+:root { color-scheme: dark; }
+html, body { width: 1280px; height: 640px; overflow: hidden; background: var(--ground); }
+.sheet { position: relative; width: 1280px; height: 640px; padding: 64px 72px; }
+.intro { position: absolute; left: 72px; top: 64px; bottom: 64px; width: 400px; display: flex; flex-direction: column; }
+.icon { width: 64px; height: 64px; display: block; margin-bottom: 40px; }
+h1 { font-size: 76px; font-weight: 600; letter-spacing: -0.035em; line-height: 0.95; margin: 0 0 22px; }
+.sub { font-size: 23px; line-height: 1.42; color: var(--ink-2); margin: 0; max-width: 21ch; text-wrap: pretty; }
+.sub b { color: var(--ink); font-weight: 500; }
+.meta { margin-top: auto; display: flex; align-items: center; gap: 12px; font-size: 16px; line-height: 1; color: var(--ink-2); }
+.meta .pad { width: 9px; height: 9px; }
+.artifact { position: absolute; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-panel); background: var(--panel); }
+.artifact img { display: block; }
+.callout { position: absolute; font-size: 15px; line-height: 1.35; color: var(--ink-2); width: 190px; }
+.callout b { display: block; color: var(--ink); font-weight: 600; font-size: 16px; }
+.callout.lit b { color: var(--signal-ink); }
+svg.traces { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+svg.traces path { fill: none; stroke: var(--trace); stroke-width: 1.5; }
+svg.traces circle { fill: var(--ground); stroke: var(--trace); stroke-width: 1.5; }
+svg.traces .lit path, svg.traces .lit circle { stroke: var(--signal); }
+svg.traces .lit circle.end { fill: var(--signal); }

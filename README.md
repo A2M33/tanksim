@@ -1,10 +1,12 @@
+<p align="center"><img src="docs/banner.png" alt="tanksim banner: the HMI process drawing with the supply cistern, pump P-101 running with its cyan status pad, and tank T-101 at 62.7 %. A callout says the PLC starts the pump at the start level and trips it after 5 s without feedback." width="100%"></p>
+
 # tanksim
 
 A water tank, a fill pump and the PLC program that runs them. It speaks Modbus TCP, so real SCADA and HMI tools can connect to it, and it ships with its own browser HMI.
 
 **[Try the live demo ↗](https://a2m33.github.io/tanksim/)** It runs the same Python code in your browser through Pyodide, so you can break the pump and watch the PLC react without installing anything.
 
-![The HMI in its light theme. The pump starts at the start level, its status lamp turns amber and the tank fills. Then the pump breaks: the lamp and the faceplate turn red, and a red alarm banner with a diamond for high priority appears. After a reset and an acknowledge the pump runs again.](docs/demo.gif)
+![The HMI in its dark theme. The pump starts at the start level, its status pad turns cyan and the tank fills. Then the pump breaks: the pad and the faceplate turn red, and a red alarm banner with a diamond for high priority appears. After a reset and an acknowledge the pump runs again.](docs/demo.gif)
 
 I wanted something to practise PLC logic and Modbus on without buying a PLC. tanksim runs on any computer with Python 3.10 or newer and needs no other packages.
 
@@ -50,9 +52,9 @@ The program in [`plc.py`](src/tanksim/plc.py) runs once per scan, like the main 
 
 Alarms follow ISA-18.2. An alarm arrives unacknowledged and flashes. It leaves the list once it has cleared and you have acknowledged it. Level alarms have a 1 % deadband so sensor noise cannot make them chatter.
 
-The HMI follows ISA-101: a grey-green screen where colour means something. A running pump is filled dark and a stopped pump is hollow. Its status lamp is grey when stopped, amber when running and red on a fault. Red and amber otherwise mark alarms, and each alarm also shows its priority as a word and a shape (a diamond for high, a triangle for medium), so nobody has to tell the colours apart. The page follows your system's dark mode with a darker night-shift palette.
+The HMI follows ISA-101: a calm screen where colour means something. A running pump is filled and a stopped pump is hollow. Its status pad is a grey ring when stopped, cyan when running and red on a fault. Red and amber mark alarms, and each alarm also shows its priority as a word and a shape (a diamond for high, a triangle for medium), so nobody has to tell the colours apart. The page follows your system's light or dark mode.
 
-![The full HMI after the pump broke in manual mode: the pump symbol and its lamp are red, the faceplate reads "Fault, reset to restart", the header shows 1 alarm not acknowledged, and the alarm list has one high priority pump alarm above the event log. Below are the level trend and the simulator panel with "Break the pump" switched on.](docs/hmi-fault.png)
+![The full HMI after the pump broke in manual mode: the pump symbol and its status pad are red, the faceplate reads "Fault, reset to restart", the header shows 1 alarm not acknowledged, and the alarm list has one high priority pump alarm above the event log. Below are the level trend and the simulator panel with "Break the pump" switched on.](docs/hmi-fault.png)
 
 ## Modbus register map
 
@@ -131,7 +133,7 @@ pip install -e ".[dev]"
 pytest
 ```
 
-The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `dev` extra brings pytest and pymodbus; tanksim itself still installs nothing else. With Playwright installed the tests also drive the HMI in a browser; without it pytest skips those. CI runs every test, the browser ones included, on Linux, Windows and macOS. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
+The tests cover the physics, every PLC rule above, the Modbus frames and the HTTP API. The `dev` extra brings pytest and pymodbus; tanksim itself still installs nothing else. With Playwright installed the tests also drive the HMI in a browser; without it pytest skips those. CI runs every test, the browser ones included, on Linux, Windows and macOS. The `tools` folder holds the scripts behind this page: `screenshot.py` and `gif.py` record the images from a running tanksim with Playwright, `banner/` draws the banner above, and `build_site.py` builds the Pyodide demo that GitHub Pages serves.
 
 ## License
 

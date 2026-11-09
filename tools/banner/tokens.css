@@ -1,0 +1,118 @@
+/* A2M33 "trace" design tokens. Copy this file (and fonts/) into a project; do not edit per project.
+   Source of truth: notes/design/README.md */
+
+@font-face { font-family: "Archivo"; font-weight: 400; font-display: swap; src: url("fonts/Archivo-400.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 500; font-display: swap; src: url("fonts/Archivo-500.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 600; font-display: swap; src: url("fonts/Archivo-600.woff2") format("woff2"); }
+@font-face { font-family: "Archivo"; font-weight: 700; font-display: swap; src: url("fonts/Archivo-700.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url("fonts/JetBrainsMono-400.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 500; font-display: swap; src: url("fonts/JetBrainsMono-500.woff2") format("woff2"); }
+
+:root {
+  color-scheme: light dark;
+
+  /* Light: drafting paper with a blue cast */
+  --ground: #f2f5fa;     /* page background */
+  --panel: #ffffff;      /* raised surfaces */
+  --inset: #e4eaf3;      /* wells, tracks, inactive fills */
+  --line: #cdd6e4;       /* 1px borders and rules */
+  --trace: #9fb0c9;      /* idle traces and pads */
+  --ink: #0c1628;        /* main text and values */
+  --ink-2: #4a5a73;      /* labels and secondary text */
+  --signal: #0788ad;     /* the one signal colour: live, active, the lit trace */
+  --signal-ink: #055c76; /* signal-coloured text on light */
+  --link: #1f5bd8;       /* links, focus, selected */
+  --fault: #c9343a;      /* faults and errors only */
+  --ok: #1d8458;         /* a confirmed good state, sparingly */
+
+  --font: "Archivo", "Vazirmatn", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", Consolas, ui-monospace, monospace; /* code, commands, measurements only */
+
+  /* Type scale (1.25, base 16px) */
+  --t-xs: 0.8rem;
+  --t-sm: 0.9rem;
+  --t-md: 1rem;
+  --t-lg: 1.25rem;
+  --t-xl: 1.563rem;
+  --t-2xl: 1.953rem;
+  --t-3xl: 2.441rem;
+  --t-value: 3.052rem;
+
+  /* Space (4px grid) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  /* Radius by hierarchy */
+  --r-panel: 8px;
+  --r-control: 4px;
+  --r-pad: 50%;
+
+  --trace-w: 1.5px;
+  --dur: 160ms;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark: board at night, deep navy, never pure black */
+    --ground: #0b1222;
+    --panel: #111a2d;
+    --inset: #18233a;
+    --line: #22304b;
+    --trace: #3a4d70;
+    --ink: #e6edf7;
+    --ink-2: #93a3bd;
+    --signal: #2fcbea;
+    --signal-ink: #7fe0f3;
+    --link: #6f9dff;
+    --fault: #ff6b6b;
+    --ok: #3fcf93;
+  }
+}
+
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+/* Base */
+*, *::before, *::after { box-sizing: border-box; }
+html { font-family: var(--font); font-size: 100%; line-height: 1.5; color: var(--ink); background: var(--ground);
+       font-variant-numeric: tabular-nums; -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+::selection { background: color-mix(in srgb, var(--signal) 30%, transparent); color: var(--ink); }
+a { color: var(--link); text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: var(--r-control); }
+h1, h2, h3 { font-weight: 600; line-height: 1.12; letter-spacing: -0.015em; margin: 0 0 var(--s3); text-wrap: balance; }
+h1 { font-size: var(--t-2xl); }
+h2 { font-size: var(--t-xl); }
+h3 { font-size: var(--t-lg); }
+code, kbd, samp { font-family: var(--font-code); font-size: 0.92em; }
+
+/* Signature: the pad. A hollow ring at the end of a trace. Idle = trace colour, live = filled signal, fault = red. */
+.pad { display: inline-block; width: 0.62em; height: 0.62em; border-radius: var(--r-pad);
+       border: var(--trace-w) solid var(--trace); background: transparent; vertical-align: 0.04em; }
+.pad[data-state="live"] { border-color: var(--signal); background: var(--signal); }
+.pad[data-state="fault"] { border-color: var(--fault); background: var(--fault); }
+.pad[data-state="ok"] { border-color: var(--ok); }
+
+/* Label: the small text next to a value */
+.label { font-weight: 500; font-size: var(--t-sm); color: var(--ink-2); }
+
+/* Reading: a value with its unit */
+.reading { font-size: var(--t-value); font-weight: 500; line-height: 1; letter-spacing: -0.02em; }
+.reading small { font-size: 0.4em; font-weight: 500; color: var(--ink-2); margin-inline-start: 0.2em; }
+
+/* Panel */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-panel); padding: var(--s5); }
+
+/* Buttons: flat, bordered; primary is ink, toggled-on gets a signal underline */
+.btn { font: 500 var(--t-md)/1 var(--font); min-height: 40px; padding: 0 var(--s4); border-radius: var(--r-control);
+       border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer;
+       transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.btn:hover { border-color: var(--trace); }
+.btn:active { background: var(--inset); transform: scale(0.98); }
+.btn[data-variant="primary"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn[aria-pressed="true"] { border-color: var(--signal); box-shadow: inset 0 -2px 0 var(--signal); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}

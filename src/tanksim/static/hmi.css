@@ -1,11 +1,12 @@
-/* High-performance HMI after ISA-101, on the A2M33 "control room" tokens
-   (tokens.css, copied in unchanged). A grey-green plant, colour only when
-   something needs the operator: amber for attention, red for a fault, steel
-   for selection and focus. Running equipment is dark, stopped is hollow.
-   This file uses only the token variables. */
+/* High-performance HMI after ISA-101, on the A2M33 "trace" tokens
+   (tokens.css, copied in unchanged). A quiet navy plant, colour only when it
+   means something: cyan for live equipment, amber for a medium alarm (the
+   ISA-18.2 convention, kept on purpose), red for a fault, blue for selection
+   and focus. Running equipment is dark, stopped is hollow. */
 
 :root {
-  --water: color-mix(in srgb, var(--ink-2) 40%, var(--inset));
+  --warn: #c98a0b;
+  --water: color-mix(in srgb, var(--link) 22%, var(--inset));
   --on-amber: var(--ink);
   --on-fault: var(--panel);
   --fault-text: var(--fault);
@@ -14,8 +15,9 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --on-amber: var(--cab);
-    --on-fault: var(--cab);
+    --warn: #f0b23c;
+    --on-amber: var(--ground);
+    --on-fault: var(--ground);
     /* the night-shift red is too dark for small text on a slate panel */
     --fault-text: color-mix(in srgb, var(--fault) 70%, var(--ink));
     --fault-fill: color-mix(in srgb, var(--fault) 85%, var(--ink));
@@ -39,13 +41,13 @@ button {
   border: 1px solid var(--line);
   border-radius: var(--r-control);
   cursor: pointer;
-  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-button:hover:not(:disabled) { border-color: var(--ink-2); }
-button:active:not(:disabled) { background: var(--inset); }
+@media (hover: hover) { button:hover:not(:disabled) { border-color: var(--trace); } }
+button:active:not(:disabled) { background: var(--inset); transform: scale(0.98); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 /* a switch that is on: Pause, an injected fault */
-button[aria-pressed="true"] { border-color: var(--amber); box-shadow: inset 0 -3px 0 var(--amber); }
+button[aria-pressed="true"] { border-color: var(--signal); box-shadow: inset 0 -2px 0 var(--signal); }
 
 /* top bar */
 .bar {
@@ -69,7 +71,7 @@ button[aria-pressed="true"] { border-color: var(--amber); box-shadow: inset 0 -3
   gap: var(--s2);
 }
 .alarm-summary.has-high { background: var(--fault-fill); border-color: var(--fault-fill); color: var(--on-fault); }
-.alarm-summary.has-medium { background: var(--amber); border-color: var(--amber); color: var(--on-amber); }
+.alarm-summary.has-medium { background: var(--warn); border-color: var(--warn); color: var(--on-amber); }
 .alarm-summary.unacked { animation: flash 1s steps(1) infinite; }
 
 /* Alarm priority by shape as well as colour (ISA-18.2): a diamond for
@@ -83,7 +85,7 @@ button[aria-pressed="true"] { border-color: var(--amber); box-shadow: inset 0 -3
 }
 .prio-shape { margin-inline-end: var(--s2); vertical-align: -0.05em; }
 tr.high .prio-shape, .alarm-summary.has-high::before { background: var(--fault); transform: rotate(45deg) scale(0.8); }
-tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amber); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--warn); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
 .alarm-summary.has-high::before, .alarm-summary.has-medium::before { background: currentColor; }
 
 .demo-note {
@@ -124,7 +126,7 @@ tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amb
 .pump.running circle { fill: var(--ink); }
 .pump.running path { stroke: var(--panel); }
 .pump.fault circle { stroke: var(--fault); stroke-width: 4; }
-#mimic .tag { font-family: var(--font-tag); font-weight: 500; font-size: 14px; fill: var(--ink-2); }
+#mimic .tag { font-family: var(--font-code); font-weight: 400; font-size: 14px; fill: var(--ink-2); }
 .label { font-size: 13px; fill: var(--ink-2); }
 .value { font-size: 15px; font-weight: 500; fill: var(--ink); }
 .big { font-size: 32px; font-weight: 500; fill: var(--ink); }
@@ -136,22 +138,22 @@ tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amb
 .sp-mark path { fill: var(--ink-2); }
 .sp-mark line { stroke: var(--ink-2); stroke-dasharray: 3 3; }
 .sp-mark text { font-size: 11px; fill: var(--ink-2); }
-.sp-mark.alarm-medium.active path { fill: var(--amber); }
+.sp-mark.alarm-medium.active path { fill: var(--warn); }
 .sp-mark.alarm-high.active path { fill: var(--fault); }
 
-/* the status lamp inside the drawing, same states as .lamp */
-.lamp-svg { fill: var(--inset); stroke: var(--line); stroke-width: 1; transition: fill var(--dur) var(--ease); }
-.lamp-svg[data-state="live"] { fill: var(--amber); stroke: color-mix(in srgb, var(--amber) 25%, transparent); stroke-width: 6; }
-.lamp-svg[data-state="fault"] { fill: var(--fault); stroke: none; }
+/* the pad inside the drawing, same states as .pad: hollow when stopped */
+.lamp-svg { fill: var(--panel); stroke: var(--trace); stroke-width: 1.5; transition: fill var(--dur) var(--ease), stroke var(--dur) var(--ease); }
+.lamp-svg[data-state="live"] { fill: var(--signal); stroke: var(--signal); }
+.lamp-svg[data-state="fault"] { fill: var(--fault); stroke: var(--fault); }
 
 /* faceplate */
 .pump-state { font-size: var(--t-xl); font-weight: 600; line-height: 1.2; margin: 0 0 var(--s4); }
-.pump-state .lamp { margin-inline-end: var(--s1); transition: background var(--dur) var(--ease); }
+.pump-state .pad { margin-inline-end: var(--s1); transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
 #fp-state.fault { color: var(--fault-text); }
 .field { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin-bottom: var(--s3); }
 .field-name { min-width: 84px; color: var(--ink-2); }
 
-/* one choice out of a few: the chosen one is raised and marked in steel */
+/* one choice out of a few: the chosen one is raised and marked in blue */
 .segmented {
   display: inline-flex;
   gap: 2px;
@@ -167,7 +169,7 @@ tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amb
   border-color: var(--line);
   color: var(--ink);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--steel);
+  box-shadow: inset 0 -2px 0 var(--link);
 }
 
 .hint { font-size: var(--t-sm); color: var(--ink-2); margin: 0 0 var(--s3); max-width: 44ch; }
@@ -180,7 +182,7 @@ tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amb
   width: 90px;
   min-height: 32px;
   padding: var(--s1) var(--s2);
-  background: var(--cab);
+  background: var(--ground);
   border: 1px solid var(--line);
   border-radius: var(--r-control);
   text-align: right;
@@ -196,7 +198,7 @@ tr.medium .prio-shape, .alarm-summary.has-medium::before { background: var(--amb
 .readouts { display: none; }
 
 /* trend */
-#trend { width: 100%; height: 220px; display: block; background: var(--cab); border: 1px solid var(--line); border-radius: var(--r-control); }
+#trend { width: 100%; height: 220px; display: block; background: var(--ground); border: 1px solid var(--line); border-radius: var(--r-control); }
 .legend { font-size: var(--t-sm); color: var(--ink-2); margin: var(--s2) 0 0; display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; }
 .key { display: inline-block; width: 18px; height: 0; margin-right: var(--s1); vertical-align: middle; }
 .key-level { border-top: 2px solid var(--ink); }
@@ -209,15 +211,15 @@ th { text-align: left; font-weight: 500; color: var(--ink-2); border-bottom: 1px
 td { padding: 6px; border-bottom: 1px solid var(--inset); vertical-align: top; }
 td:nth-child(-n + 3) { white-space: nowrap; }
 tr.high td:first-child { box-shadow: inset 4px 0 var(--fault); padding-left: var(--s3); }
-tr.medium td:first-child { box-shadow: inset 4px 0 var(--amber); padding-left: var(--s3); }
+tr.medium td:first-child { box-shadow: inset 4px 0 var(--warn); padding-left: var(--s3); }
 tr.unacked.active td { font-weight: 600; }
 tr.high { --alarm: var(--fault-fill); --alarm-ink: var(--on-fault); }
-tr.medium { --alarm: var(--amber); --alarm-ink: var(--on-amber); }
+tr.medium { --alarm: var(--warn); --alarm-ink: var(--on-amber); }
 tr.unacked .state-cell { animation: flash-cell 1s steps(1) infinite; }
 .empty { color: var(--ink-2); font-size: var(--t-sm); margin: var(--s2) 0 0; }
 .events { list-style: none; margin: 0; padding: 0; font-size: var(--t-sm); max-height: 190px; overflow-y: auto; }
 .events li { padding: 3px 0; border-bottom: 1px solid var(--inset); display: grid; grid-template-columns: 70px 42px 1fr; gap: var(--s2); }
-.events .kind { font-family: var(--font-tag); color: var(--ink-2); }
+.events .kind { font-family: var(--font); color: var(--ink-2); }
 .events .ALM .kind { color: var(--fault-text); font-weight: 600; }
 
 /* simulator: set apart so nobody mistakes it for plant controls */

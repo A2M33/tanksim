@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>tanksim banner</title>
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="banner.css">
+<script src="trace.js"></script>
+<style>
+  /* mimic.png: the HMI process drawing at 2x, shot by hand from a running tanksim (pump on) */
+  .artifact { left: 520px; top: 64px; width: 688px; height: 512px; padding-top: 30px; }
+  .artifact img { width: 650px; margin-left: 10px; }
+</style>
+</head>
+<body>
+<main class="sheet">
+  <section class="intro">
+    <img class="icon" src="icon.png" alt="">
+    <h1>tanksim</h1>
+    <p class="sub">A water tank, a fill pump and the PLC program that runs them.</p>
+    <p class="meta"><span class="pad" data-state="live"></span>Python · Modbus TCP · live demo in the browser</p>
+  </section>
+
+  <figure class="artifact" style="margin:0"><img src="mimic.png" alt=""></figure>
+
+  <p class="callout lit" id="c-pump" style="left:552px;top:120px;width:170px"><b>Pump P-101</b>The PLC starts it at the start level and trips it after 5 s without feedback</p>
+</main>
+<script>
+  // image coordinates (2x shot) to banner coordinates
+  const s = 650 / 1638, img = (x, y) => [520 + 10 + x * s, 64 + 30 + y * s];
+  const below = id => { const r = document.getElementById(id).getBoundingClientRect(); return [r.left + 4, r.bottom + 2]; };
+  const right = id => { const r = document.getElementById(id).getBoundingClientRect(); return [r.right + 8, r.top + 11]; };
+  traces([
+    [below("c-pump"), img(417, 742), { lit: true, r: 0, tail: 20 }],
+  ]);
+</script>
+</body>
+</html>

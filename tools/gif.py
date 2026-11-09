@@ -17,7 +17,7 @@ URL = "http://localhost:8080/"
 GREY_TEXT = ["--disable-lcd-text"]  # no coloured subpixel fringes on small grey labels
 FRAME_MS = 200
 WIDTH = 960
-SIGNAL = ["#d99211", "#eddcba", "#b8322a"]  # amber, amber halo on panel, fault
+SIGNAL = ["#2fcbea", "#ff6b6b", "#f0b23c"]  # live cyan, fault, medium-alarm amber (dark theme)
 CLIP = {"x": 0, "y": 0, "width": 1440, "height": 760}  # header, process and faceplate
 
 
@@ -28,7 +28,7 @@ def main(out: Path) -> None:
             browser = p.chromium.launch(headless=True, args=GREY_TEXT)
         except Exception:
             browser = p.chromium.launch(headless=True, channel="msedge", args=GREY_TEXT)
-        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page = browser.new_page(viewport={"width": 1440, "height": 900}, color_scheme="dark")
         page.goto(URL)
         page.wait_for_timeout(1500)
 
@@ -61,7 +61,7 @@ def main(out: Path) -> None:
         sheet.paste(f, (0, i * f.height))
     palette = sheet.quantize(colors=64 - len(SIGNAL), method=Image.Quantize.MEDIANCUT)
     # The lamp is too small to win a palette slot on its own, so the signal
-    # colours from tokens.css (light theme) are added by hand.
+    # colours from tokens.css (dark theme) are added by hand.
     colours = palette.getpalette()[: (64 - len(SIGNAL)) * 3]
     for hex_colour in SIGNAL:
         colours += [int(hex_colour[i:i + 2], 16) for i in (1, 3, 5)]

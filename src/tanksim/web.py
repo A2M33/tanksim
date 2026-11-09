@@ -29,8 +29,8 @@ from .commands import CommandError, apply_command
 from .sim import Simulator
 
 FONTS = [
-    "Barlow-Regular", "Barlow-Medium", "Barlow-SemiBold",
-    "BarlowSemiCondensed-Medium", "BarlowSemiCondensed-SemiBold",
+    "Archivo-400", "Archivo-500", "Archivo-600", "Archivo-700",
+    "JetBrainsMono-400", "JetBrainsMono-500",
 ]
 STATIC = {
     "/": ("index.html", "text/html; charset=utf-8"),

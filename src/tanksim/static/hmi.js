@@ -96,7 +96,7 @@ function svg(tag, attrs, text) {
 // Sensor noise around an empty tank must not read -0.0 % or -1 mm.
 const unsigned = (value) => Math.max(0, value);
 
-// The status lamp: grey when stopped, amber when running, red on a fault.
+// The status lamp: hollow when stopped, cyan when running, red on a fault.
 function setLamp(id, s, fault) {
   const lamp = $(id);
   const lampState = fault ? "fault" : s.pump_running ? "live" : "";
