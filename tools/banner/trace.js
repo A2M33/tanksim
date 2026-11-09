@@ -8,6 +8,10 @@ function centre(p) {
   return [r.left + r.width / 2, r.top + r.height / 2];
 }
 function traces(list) {
+  // measure only after the web fonts load, or label positions come from the fallback font
+  document.fonts.ready.then(() => drawTraces(list));
+}
+function drawTraces(list) {
   const ns = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "traces");
