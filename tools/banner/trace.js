@@ -14,9 +14,11 @@ function traces(list) {
   svg.setAttribute("viewBox", "0 0 1280 640");
   for (const [from, to, opt = {}] of list) {
     const [x1, y1] = centre(from), [x2, y2] = centre(to);
-    const tail = opt.tail || 0, ty = y2 - Math.sign(y2 - y1) * tail;
-    const dy = ty - y1, dx = x2 - x1;
-    const run = Math.sign(dx) * Math.max(0, Math.abs(dx) - Math.abs(dy));
+    // the diagonal can only be as long as the shorter side; the rest of a tall
+    // route becomes a vertical tail into the target, so every bend stays at 45 degrees
+    const dx = x2 - x1, d = Math.min(Math.abs(dx), Math.max(0, Math.abs(y2 - y1) - (opt.tail || 0)));
+    const ty = y1 + Math.sign(y2 - y1) * d;
+    const run = Math.sign(dx) * (Math.abs(dx) - d);
     const g = document.createElementNS(ns, "g");
     if (opt.lit) g.setAttribute("class", "lit");
     const p = document.createElementNS(ns, "path");
